@@ -1,9 +1,11 @@
 #include <Key.h>
 #include <Keypad.h>
 
+
 /****************************** 
 ***INICIALIZACIA KLAVESTNICE*** 
 *******************************/ 
+
 
 const byte rows = 4;
 const byte cols = 4;
@@ -20,14 +22,14 @@ Keypad keyPad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols);
 
 void setup() 
 {
- Serial.begin(9600);
+  Serial.begin(9600);
 }
 
 void loop() 
 {
-char charRead = keyPad.getKey();
-if (charRead)
-{
-Serial.println(charRead);
-}
+  char charRead = keyPad.getKey();
+  if (charRead)
+  {
+    Serial.println(charRead);
+  }
 }
