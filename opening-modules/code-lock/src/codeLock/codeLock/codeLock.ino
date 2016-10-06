@@ -20,13 +20,22 @@ Keypad keyPad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols);
 /*****************C O D E*******************/
           /***C O N S T A T S***/
 const byte maxCodeLength = 8;
+const char emptySymbol = 'x';
           /***V A R I A B L E***/
 char readCode[maxCodeLength];
 byte pos;
+char code[maxCodeLength] = {'0','9','0','5','1','9','9','7'};
+
+/******************G A T E*****************/ 
+          /***C O N S T A T S***/
+const byte relay1 = 11;
+const byte relay2 = 12;
 
 void setup() 
 {
   Serial.begin(9600);
+  pinMode(relay1, OUTPUT);
+  pinMode(relay2, OUTPUT);
   resetCodePos();
 }
 
@@ -54,6 +63,8 @@ void loop()
   }
 }
 
+/******M E T H O T S*********/
+
 void resetCode()
 {
   for(byte i=0;i<maxCodeLength;i++)
@@ -75,11 +86,26 @@ void resetCodePos()
 
 void sendCodeToMaster()
 {
-  for(byte i=0;i<maxCodeLength;i++)
+  Serial.print(readCode);
+  if(verifyCode())
   {
-     Serial.print(readCode[i]);  
+    digitalWrite(relay2, HIGH);
+    delay(2000);
+    digitalWrite(relay2, LOW);
   }
-  Serial.println();
+ Serial.println();
   resetCodePos();
 }
 
+boolean verifyCode()
+{
+  boolean check = true;
+  for(byte i=0;i<maxCodeLength;i++)
+  {
+    if(readCode[i] != code[i])
+    {
+      return false;   
+    }
+  }
+  return check;
+}
