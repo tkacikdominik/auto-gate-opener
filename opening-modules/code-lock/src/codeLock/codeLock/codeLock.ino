@@ -1,6 +1,10 @@
 #include <Key.h>
 #include <Keypad.h>
+#include <Wire.h>
 
+
+#define MASTERADDRESS 0x01
+#define CODELOCKADDRESS 0x02
 /**I N I C I A L I Z A T I O N K E Y P A D**/ 
           /***C O N S T A T S***/
 const char submitChar ='#';
@@ -20,22 +24,14 @@ Keypad keyPad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols);
 /*****************C O D E*******************/
           /***C O N S T A T S***/
 const byte maxCodeLength = 8;
-const char emptySymbol = 'x';
           /***V A R I A B L E***/
 char readCode[maxCodeLength];
 byte pos;
-char code[maxCodeLength] = {'0','9','0','5','1','9','9','7'};
-
-/******************G A T E*****************/ 
-          /***C O N S T A T S***/
-const byte relay1 = 11;
-const byte relay2 = 12;
 
 void setup() 
 {
+  Wire.begin(CODELOCKADDRESS);
   Serial.begin(9600);
-  pinMode(relay1, OUTPUT);
-  pinMode(relay2, OUTPUT);
   resetCodePos();
 }
 
@@ -86,26 +82,12 @@ void resetCodePos()
 
 void sendCodeToMaster()
 {
+  Serial.println("Posielam na mastra");
   Serial.print(readCode);
-  if(verifyCode())
-  {
-    digitalWrite(relay2, HIGH);
-    delay(2000);
-    digitalWrite(relay2, LOW);
-  }
- Serial.println();
+  Serial.println();
+  Wire.beginTransmission(MASTERADDRESS);
+  Wire.write(readCode, maxCodeLength);
+  Wire.endTransmission();
+  Serial.println("Poslane!");
   resetCodePos();
-}
-
-boolean verifyCode()
-{
-  boolean check = true;
-  for(byte i=0;i<maxCodeLength;i++)
-  {
-    if(readCode[i] != code[i])
-    {
-      return false;   
-    }
-  }
-  return check;
 }
