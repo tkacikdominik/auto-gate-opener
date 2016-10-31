@@ -16,6 +16,7 @@ boolean check = true;
 
 #define MASTERADDRESS 0x01
 #define CODELOCKADDRESS 0x02
+#define BLUETOOTHADDRESS 0x03
 
 void setup() 
 {
