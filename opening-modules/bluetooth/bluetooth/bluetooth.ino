@@ -1,45 +1,61 @@
-#include <Wire.h>
+#include <SPI.h>
+#include <RFM69.h>
 
-#define MASTERADDRESS 0x01
-#define BLUETOOTHADDRESS 0x03
+#define MASTERADDRESS 3
+#define BLUETOOTHADDRESS 4
+#define NETWORKADDRESS 0
+
+// RFM69 frequency, uncomment the frequency of your module:
+
+#define FREQUENCY     RF69_868MHZ
+#define ENCRYPTKEY    "TOPSECRETPASSWRD" // Use the same 16-byte key on all nodes
+
+// Use ACKnowledge when sending messages (or not):
+
+#define USEACK        true // Request ACKs or not
+
+const char submitChar ='\n';
+
+// Create a library object for our RFM69HCW module:
+RFM69 radio;
 /*****************C O D E*******************/
           /***C O N S T A T S***/
 const byte maxCodeLength = 8;
-const char submitChar ='\n';
           /***V A R I A B L E***/
 char readCode[maxCodeLength];
 byte pos;
 
 void setup() 
-{
-  Wire.begin(BLUETOOTHADDRESS);
-  Serial.begin(115200);
+{  
+  Serial.begin(9600);
   resetCodePos();
+  radio.initialize(FREQUENCY, BLUETOOTHADDRESS, NETWORKADDRESS);
+  radio.encrypt(ENCRYPTKEY);
 }
 
 void loop() 
 {
-  while(Serial.available() > 0)
+  char charRead = char(Serial.read());
+  if (charRead)  
   {
-    char charRead = char(Serial.read());    
-    
-      if(charRead==submitChar)
+    if(charRead==submitChar)
+    {
+      sendCodeToMaster();
+      Serial.println("posielam na mastra");
+    }
+    else
+    {
+      if (pos<maxCodeLength)
       {
-        sendCodeToMaster();
+        readCode[pos] = charRead;
+        pos++;
       }
       else
       {
-        if (pos<maxCodeLength)
-        {
-          readCode[pos] = charRead;
-          pos++;
-        }
-        else
-        {
-          resetCode();
-        }
+        resetCode();
       }
     }
+  }
 }
 
 /******M E T H O T S*********/
@@ -64,13 +80,14 @@ void resetCodePos()
 }
 
 void sendCodeToMaster()
-{
-  Serial.println("Posielam na mastra");
-  Serial.print(readCode);
-  Serial.println();
-  Wire.beginTransmission(MASTERADDRESS);
-  Wire.write(readCode, maxCodeLength);
-  Wire.endTransmission();
-  Serial.println("Poslane!");
+{  
+  if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 100, 100))
+  {
+    
+  }
+  else
+  {
+    
+  }  
   resetCodePos();
 }
