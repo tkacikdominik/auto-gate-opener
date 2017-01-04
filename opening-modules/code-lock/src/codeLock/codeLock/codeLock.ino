@@ -1,9 +1,9 @@
 #include <SPI.h>
 #include <RFM69.h>
-#include <Key.h>
+//#include <Key.h>
 #include <Keypad.h>
 
-#define MASTERADDRESS 3
+#define MASTERADDRESS 1
 #define CODELOCKADDRESS 2
 #define NETWORKADDRESS 0
 #define FREQUENCY     RF69_868MHZ
@@ -128,8 +128,6 @@ void sendCodeToMaster()
 {
   Serial.println("Posielam na mastra");
   Serial.println(readCode);
-  Serial.println(conditionBattery);
-  Serial.println();
   if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 2, 2))
   {
     Serial.println("Prijate!");
@@ -140,3 +138,22 @@ void sendCodeToMaster()
   }  
   resetCodePos();
 }
+
+void receiveDataOFMaster()
+{
+  if (radio.receiveDone())
+  {
+    Serial.println("massage[");
+    for (byte i = 0; i < radio.DATALEN; i++)
+    {
+      Serial.print((char)radio.DATA[i]);
+    }
+    Serial.print("]");
+    if (radio.ACKRequested())
+    {
+      radio.sendACK();
+      Serial.println("ACK sent");
+    }
+  }
+}
+
