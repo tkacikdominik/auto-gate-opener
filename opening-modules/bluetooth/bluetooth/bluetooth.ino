@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include <RFM69.h>
 
-#define MASTERADDRESS 3
+#define MASTERADDRESS 1
 #define BLUETOOTHADDRESS 4
 #define NETWORKADDRESS 0
 
@@ -35,6 +35,11 @@ void setup()
 
 void loop() 
 {
+  if(Serial.available()>0)
+  {
+  char val=(char)Serial.read();
+  Serial.println(val);  
+  }
   char charRead = char(Serial.read());
   if (charRead)  
   {
@@ -81,6 +86,7 @@ void resetCodePos()
 
 void sendCodeToMaster()
 {  
+  Serial.println(readCode);
   if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 100, 100))
   {
     
