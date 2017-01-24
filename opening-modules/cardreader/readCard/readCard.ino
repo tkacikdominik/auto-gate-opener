@@ -3,8 +3,8 @@
 #include <MFRC522.h>
 
 
-#define SS_PIN 53
-#define RST_PIN 49
+#define SS_PIN 5
+#define RST_PIN 6
 
 #define MASTERADDRESS 1
 #define CARDREADERADDRESS 5
@@ -24,10 +24,11 @@ byte readCode[cardCodeLength];
 void setup() 
 { 
   Serial.begin(9600);
-  radio.initialize(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS);
+  radio.initialize(FREQUENCY, CARDREADERADDRESS, NETWORKADDRESS);
   radio.encrypt(ENCRYPTKEY);
   SPI.begin(); 
   rfid.PCD_Init();
+  Serial.println("Card reader");
 }
  
 void loop() 
