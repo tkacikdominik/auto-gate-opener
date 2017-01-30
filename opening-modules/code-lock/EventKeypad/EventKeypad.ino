@@ -43,17 +43,6 @@ void setup(){
 
 void loop()
 {
-  if (radio.receiveDone())
-  {
-    Serial.print("message [");
-    for (int i = 0; i < radio.DATALEN; i++)
-    {
-      readCode[i] = (char)radio.DATA[i];
-      Serial.print((char)radio.DATA[i]);
-    }
-    Serial.print("], RSSI ");
-    Serial.println(radio.RSSI); 
-  }
   char key = keypad.getKey(); 
 }
 
@@ -81,8 +70,8 @@ void keypadEvent(KeypadEvent key)
     }
   }
 }
-
-/*char setMassage(char readCode)
+/*
+char setMassage(char readCode)
 {
   char massage[maxCodeLength];
   for(byte i=0;i<2;i++)
@@ -135,13 +124,13 @@ void processCode(char readCode)
     
     break;    
   }
-}*/
-
+}
+*/
 void sendCodeToMaster()
 {
   Serial.println("Posielam na mastra");
   Serial.println(readCode);
-  if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 3, 100))
+  if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 2, 20))
   {
     Serial.println("Prijate!");
   }
