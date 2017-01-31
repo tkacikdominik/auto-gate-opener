@@ -1,4 +1,5 @@
-  #include <SPI.h>
+#include <GateOpenerProtocol.h>
+#include <SPI.h>
 #include <RFM69.h>
 
 #define MASTERADDRESS 1
@@ -9,15 +10,13 @@
 #define USEACK        true // Request ACKs or not
 RFM69 radio;
 
-#define EMPTYMSG 0
-#define VERIFYCODEMSG 1
-
 #define MINLONG -2147483648L
 #define MAXLONG 2147483647L
 
 byte message[RF69_MAX_DATA_LEN];
 byte messageLength;
 byte senderId;
+byte messageToSend[RF69_MAX_DATA_LEN];
 
 /******P I N S********/
 const byte led1 = 6;
@@ -28,16 +27,14 @@ const byte led3 = 8;
 const byte codeLength = 8;          
 char code[codeLength] = {'0','9','0','5','1','9','9','7'};
 
-const int numTokens = 256;
+const int numTokens = 128;
 long tokens[numTokens];
 unsigned long tokenTime[numTokens]; 
 int actualTokenIndex = 0;
 unsigned long tokenValidTime = 30000;
 void setup() 
 {
-
   Serial.begin(9600);
-  Serial.print("ArduinoMaster");
   radio.initialize(FREQUENCY, MASTERADDRESS, NETWORKADDRESS);
   radio.encrypt(ENCRYPTKEY);
   pinMode(led1, OUTPUT);
@@ -97,36 +94,66 @@ void copyMessage()
 
 void verifyCodeMsgHandler(byte senderId, byte messageLength, byte* message)
 {
-  /*
-  3. precitat kod
-  4.overit kod 
-  5. vygenerovat token */
-  if(verifyCode())
+  if(verifyCode(messageLength, message))
   {
-    generateToken ();
+    int tokenIndex = generateToken();
+    int messageLength = createTokenMsg(tokenIndex, messageToSend);
+    sendMessage(senderId, messageToSend, messageLength);
   }  
+}
+
+int createTokenMsg(int tokenIndex, byte* buf)
+{
+  buf[0]=TOKENMSG;
+  if(tokenIndex==-1)
+  {
+    buf[1]=0;
+    return 2;  
+  }
+  else
+  {
+    buf[1]=1;
+    longToByteArray(tokens[tokenIndex], buf, 2);
+    return 6;
+  }
+}
+
+void longToByteArray(long val, byte* buf, int startIndex)
+{
+  buf[startIndex]=(byte)val;
+  buf[startIndex + 1]=(byte)(val >> 8);
+  buf[startIndex + 2]=(byte)(val >> 16);
+  buf[startIndex + 3]=(byte)(val >> 24);
 }
 
 void unknownMsgHandler(byte senderId, byte messageLength, byte* message)
 {
-  Serial.print("Neznama sprava od:");
+  Serial.print("U");
   Serial.println(senderId);
-  Serial.print("Sprava: ");
+  Serial.print(" msg: ");
   for(byte i = 0; i < messageLength; i++)
   {
     Serial.print(message[i], HEX); 
   }
 }
 
-unsigned long generateToken ()
+int generateToken()
 {
-  return random(MINLONG,MAXLONG);
-  
+  actualTokenIndex++;
+  actualTokenIndex %= numTokens;
+  unsigned long actualTime = millis();
+  if(isTokenValid(actualTokenIndex,actualTime))
+  {
+    return -1;
+  }
+  long token = random(MINLONG,MAXLONG);
+  tokens[actualTokenIndex]=token;
+  tokenTime[actualTokenIndex]=actualTime + tokenValidTime;
+  return actualTokenIndex;
 }
 
-boolean isTokenValid(int tokenIndex)
+boolean isTokenValid(int tokenIndex, unsigned long actualTime)
 {
-  unsigned long actualTime = millis();
   unsigned long maxValidTime = tokenTime[tokenIndex];
   if(actualTime < maxValidTime)
   {
@@ -163,9 +190,29 @@ boolean verifyCode(byte readCodeLength, byte* readCode)
   return true;
 }
 
+void sendMessage(byte senderId, byte* buf, int messageLength)
+{
+  Serial.print("S: ");
+  Serial.print(senderId);
+  Serial.print(" msg: ");
+  for(int i = 0;i<messageLength;i++)
+  {
+    Serial.print(buf[i], HEX);  
+  }
+  Serial.println();
+  if (radio.sendWithRetry(senderId, buf, messageLength, 2, 20))
+  {
+    Serial.println(1);
+  }
+  else
+  {
+    Serial.println(0);
+  }  
+}
+
 void grantAccess()
 {    
-    Serial.println("Grant Access");
+    Serial.println("GA");
     digitalWrite(led1, HIGH);
     delay(180);
     digitalWrite(led2, HIGH);  
