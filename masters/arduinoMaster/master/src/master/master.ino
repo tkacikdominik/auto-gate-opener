@@ -1,6 +1,5 @@
+#include <GateOpenerCommunicator.h>
 #include <GateOpenerProtocol.h>
-#include <SPI.h>
-#include <RFM69.h>
 
 #define MASTERADDRESS 1
 #define CODELOCKADDRESS 2
@@ -8,14 +7,11 @@
 #define FREQUENCY     RF69_868MHZ
 #define ENCRYPTKEY    "TOPSECRETPASSWRD" 
 #define USEACK        true // Request ACKs or not
-RFM69 radio;
 
 #define MINLONG -2147483648L
 #define MAXLONG 2147483647L
 
-byte message[RF69_MAX_DATA_LEN];
-byte messageLength;
-byte senderId;
+GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, MASTERADDRESS, NETWORKADDRESS, ENCRYPTKEY);
 byte messageToSend[RF69_MAX_DATA_LEN];
 
 /******P I N S********/
@@ -35,8 +31,6 @@ unsigned long tokenValidTime = 30000;
 void setup() 
 {
   Serial.begin(9600);
-  radio.initialize(FREQUENCY, MASTERADDRESS, NETWORKADDRESS);
-  radio.encrypt(ENCRYPTKEY);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
   pinMode(led3, OUTPUT);
@@ -45,31 +39,30 @@ void setup()
 
 void loop() 
 {
-  if (radio.receiveDone())
+  if (communicator.receive())
   {
-    copyMessage();    
     processMessage();
   }
 }
 
 void processMessage()
 {
-  switch(getHeader())
+  switch(getHeader(communicator.MessageLength, communicator.Message))
   {
     case VERIFYCODEMSG:
     {
-      verifyCodeMsgHandler(senderId, messageLength - 1, message + 1);
+      verifyCodeMsgHandler(communicator.SenderId, communicator.MessageLength - 1, communicator.Message + 1);
       break;
     }
     default:
     {
-      unknownMsgHandler(senderId, messageLength, message);
+      unknownMsgHandler(communicator.SenderId, communicator.MessageLength, communicator.Message);
       break;
     }  
   }  
 }
 
-byte getHeader()
+byte getHeader(byte messageLength, byte* message)
 {
   if(messageLength > 0)
   {
@@ -78,22 +71,15 @@ byte getHeader()
   return EMPTYMSG;
 }
 
-void copyMessage()
-{
-  senderId = radio.SENDERID;
-  messageLength = radio.DATALEN;
-  for (int i = 0; i < messageLength; i++)
-  {
-    message[i] = radio.DATA[i];
-  }
-  if (radio.ACKRequested())
-  {
-    radio.sendACK();
-  }
-}
-
 void verifyCodeMsgHandler(byte senderId, byte messageLength, byte* message)
 {
+  Serial.print("V");
+  Serial.println(senderId);
+  Serial.print(" msg: ");
+  for(byte i = 0; i < messageLength; i++)
+  {
+    Serial.print(message[i], HEX); 
+  }
   if(verifyCode(messageLength, message))
   {
     int tokenIndex = generateToken();
@@ -190,17 +176,17 @@ boolean verifyCode(byte readCodeLength, byte* readCode)
   return true;
 }
 
-void sendMessage(byte senderId, byte* buf, int messageLength)
+void sendMessage(byte receiverId, byte* buf, int messageLength)
 {
   Serial.print("S: ");
-  Serial.print(senderId);
+  Serial.print(receiverId);
   Serial.print(" msg: ");
   for(int i = 0;i<messageLength;i++)
   {
     Serial.print(buf[i], HEX);  
   }
   Serial.println();
-  if (radio.sendWithRetry(senderId, buf, messageLength, 2, 20))
+  if (communicator.sendMessage(receiverId, buf, messageLength))
   {
     Serial.println(1);
   }

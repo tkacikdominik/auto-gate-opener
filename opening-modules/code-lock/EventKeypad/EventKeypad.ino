@@ -1,6 +1,7 @@
+#include <GateOpenerCommunicator.h>
+#include <GateOpenerProtocol.h>
 #include <Keypad.h>
-#include <SPI.h>
-#include <RFM69.h>
+
 
 #define MASTERADDRESS 1
 #define CODELOCKADDRESS 2
@@ -8,7 +9,9 @@
 #define FREQUENCY     RF69_868MHZ
 #define ENCRYPTKEY    "TOPSECRETPASSWRD" 
 #define USEACK        true // Request ACKs or not
-RFM69 radio;
+
+#define COMMUNICATION 0
+#define KEYPAD 1
 
 const byte rows = 4;
 const byte cols = 4;
@@ -24,6 +27,7 @@ byte rowsPin[rows] = {7, 8, 9, A0};
 byte colsPin[cols] = {3, 4, 5, 6};
 Keypad keypad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols); 
 
+GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS, ENCRYPTKEY);
 // code
 const byte maxCodeLength = 8;
 char readCode[maxCodeLength];
@@ -32,18 +36,27 @@ byte pos;
 // piezo pin 
 byte piezo = A1;
 
+byte state;
+byte messageToSend[RF69_MAX_DATA_LEN];
+
 void setup(){
     Serial.begin(9600);
     keypad.addEventListener(keypadEvent);
-    radio.initialize(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS);
-    radio.encrypt(ENCRYPTKEY);
     resetCodePos();
     pinMode(piezo, OUTPUT);
+    state = KEYPAD;
 }
 
 void loop()
 {
-  char key = keypad.getKey(); 
+  if(state == KEYPAD)
+  {
+     keypad.getKey(); 
+  }
+  else if (state == COMMUNICATION)
+  {
+    
+  }
 }
 
 void keypadEvent(KeypadEvent key)
@@ -70,67 +83,24 @@ void keypadEvent(KeypadEvent key)
     }
   }
 }
-/*
-char setMassage(char readCode)
+
+int createCodeMsg(byte* buf)
 {
-  char massage[maxCodeLength];
-  for(byte i=0;i<2;i++)
+  buf[0]=VERIFYCODEMSG;
+  for(byte i=0;i<maxCodeLength;i++)
   {
-    massage[i]=statusProcess[i];
+    buf[i+1] = readCode[i];  
   }
-  for(byte i=2;i<maxCodeLength-2;i++)
-  {
-    massage[i]=readCode[i-2];
-  }
+  return maxCodeLength+1;
 }
 
-char getMassage(char readCode)
-{
-  char massage[maxCodeLength];
-  for(byte i=2;i<maxCodeLength;i++)
-  {
-    massage[i-2]=readCode[i]; 
-  }
-  return massage;
-}
-
-char getCode(char readCode)
-{
-  char code[2];
-  for(byte i=0;i<2;i++)
-  {
-    code[i]=readCode[i]; 
-  }
-  return code;
-}
-
-void processCode(char readCode)
-{
-  switch(getCode[readCode])
-  {
-    case '01':
-    if(getMassage[readCode]==1)
-    {
-      //pip 4 krat
-      //setstatus 02 
-    }
-    else
-    {
-      //resedCode
-      //00
-    }
-    break;
-    case '02':
-    
-    break;    
-  }
-}
-*/
 void sendCodeToMaster()
 {
+  state = COMMUNICATION;
+  int messageLength = createCodeMsg(messageToSend);
   Serial.println("Posielam na mastra");
   Serial.println(readCode);
-  if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 2, 20))
+  if (communicator.sendMessage(MASTERADDRESS, messageToSend, messageLength))
   {
     Serial.println("Prijate!");
   }
@@ -140,6 +110,7 @@ void sendCodeToMaster()
   }  
   resetCodePos();
 }
+
 
 void pip()
 {
