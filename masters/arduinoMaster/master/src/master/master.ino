@@ -1,5 +1,4 @@
 #include <GateOpenerCommunicator.h>
-#include <GateOpenerProtocol.h>
 
 #define MASTERADDRESS 1
 #define CODELOCKADDRESS 2
@@ -12,7 +11,6 @@
 #define MAXLONG 2147483647L
 
 GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, MASTERADDRESS, NETWORKADDRESS, ENCRYPTKEY);
-byte messageToSend[RF69_MAX_DATA_LEN];
 
 /******P I N S********/
 const byte led1 = 6;
@@ -28,6 +26,7 @@ long tokens[numTokens];
 unsigned long tokenTime[numTokens]; 
 int actualTokenIndex = 0;
 unsigned long tokenValidTime = 30000;
+
 void setup() 
 {
   Serial.begin(9600);
@@ -47,79 +46,83 @@ void loop()
 
 void processMessage()
 {
-  switch(getHeader(communicator.MessageLength, communicator.Message))
+  switch(communicator.getHeader())
   {
     case VERIFYCODEMSG:
     {
-      verifyCodeMsgHandler(communicator.SenderId, communicator.MessageLength - 1, communicator.Message + 1);
+      verifyCodeMsgHandler();
       break;
     }
     default:
     {
-      unknownMsgHandler(communicator.SenderId, communicator.MessageLength, communicator.Message);
+      unknownMsgHandler();
       break;
     }  
   }  
 }
 
-byte getHeader(byte messageLength, byte* message)
+void verifyCodeMsgHandler()
 {
-  if(messageLength > 0)
-  {
-    return message[0];  
-  }
-  return EMPTYMSG;
-}
-
-void verifyCodeMsgHandler(byte senderId, byte messageLength, byte* message)
-{
-  Serial.print("V");
-  Serial.println(senderId);
-  Serial.print(" msg: ");
-  for(byte i = 0; i < messageLength; i++)
-  {
-    Serial.print(message[i], HEX); 
-  }
-  if(verifyCode(messageLength, message))
+  CodeMsg msg = CodeMsg(communicator.RecvMessage, communicator.MessageLength);
+  printCodeMsg(msg);
+  
+  if(verifyCode(msg))
   {
     int tokenIndex = generateToken();
-    int messageLength = createTokenMsg(tokenIndex, messageToSend);
-    sendMessage(senderId, messageToSend, messageLength);
+    TokenMsg tokenMsg = TokenMsg(tokenIndex != -1, tokens[tokenIndex]);
+    printTokenMsg(tokenMsg);    
+    boolean ok = communicator.reply(tokenMsg);
+    printDeliveryStatus(ok);    
   }  
 }
 
-int createTokenMsg(int tokenIndex, byte* buf)
+void printDeliveryStatus(boolean ok)
 {
-  buf[0]=TOKENMSG;
-  if(tokenIndex==-1)
-  {
-    buf[1]=0;
-    return 2;  
-  }
-  else
-  {
-    buf[1]=1;
-    longToByteArray(tokens[tokenIndex], buf, 2);
-    return 6;
-  }
+    if (ok)
+    {
+      Serial.println("Delivered");
+    }
+    else
+    {
+      Serial.println("Not delivered");
+    }  
 }
 
-void longToByteArray(long val, byte* buf, int startIndex)
+void printCodeMsg(CodeMsg codeMsg)
 {
-  buf[startIndex]=(byte)val;
-  buf[startIndex + 1]=(byte)(val >> 8);
-  buf[startIndex + 2]=(byte)(val >> 16);
-  buf[startIndex + 3]=(byte)(val >> 24);
+  Serial.print("C ");
+  for(byte i = 0; i < codeMsg.CodeLength; i++)
+  {
+    Serial.print((char)codeMsg.Code[i]);
+  }
+  Serial.print("(");
+  Serial.print(codeMsg.CodeLength);
+  Serial.print(") ");
+  Serial.print("[");
+  Serial.print(communicator.SenderId);
+  Serial.println("]");
 }
 
-void unknownMsgHandler(byte senderId, byte messageLength, byte* message)
+void printTokenMsg(TokenMsg tokenMsg)
+{
+  Serial.print("T ");
+  Serial.print(tokenMsg.IsValid);
+  Serial.print(" (");
+  Serial.print(tokenMsg.Token);
+  Serial.print(") ");
+  Serial.print("[");
+  Serial.print(communicator.SenderId);
+  Serial.println("]");
+}
+
+void unknownMsgHandler()
 {
   Serial.print("U");
-  Serial.println(senderId);
+  Serial.println(communicator.SenderId);
   Serial.print(" msg: ");
-  for(byte i = 0; i < messageLength; i++)
+  for(byte i = 0; i < communicator.MessageLength; i++)
   {
-    Serial.print(message[i], HEX); 
+    Serial.print(communicator.RecvMessage[i], HEX); 
   }
 }
 
@@ -159,41 +162,21 @@ boolean isTokenValid(int tokenIndex, unsigned long actualTime)
   return false;
 }
 
-boolean verifyCode(byte readCodeLength, byte* readCode)
+boolean verifyCode(CodeMsg msg)
 {
-  if (codeLength != readCodeLength)
+  if (codeLength != msg.CodeLength)
   {
     return false;   
   }
   
   for(int i=0;i < codeLength;i++)
   {
-    if(readCode[i] != code[i])
+    if(code[i] != msg.Code[i])
     {
       return false; 
     }
   }
   return true;
-}
-
-void sendMessage(byte receiverId, byte* buf, int messageLength)
-{
-  Serial.print("S: ");
-  Serial.print(receiverId);
-  Serial.print(" msg: ");
-  for(int i = 0;i<messageLength;i++)
-  {
-    Serial.print(buf[i], HEX);  
-  }
-  Serial.println();
-  if (communicator.sendMessage(receiverId, buf, messageLength))
-  {
-    Serial.println(1);
-  }
-  else
-  {
-    Serial.println(0);
-  }  
 }
 
 void grantAccess()

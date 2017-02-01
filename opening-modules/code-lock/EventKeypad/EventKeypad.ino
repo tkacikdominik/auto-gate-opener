@@ -1,5 +1,4 @@
 #include <GateOpenerCommunicator.h>
-#include <GateOpenerProtocol.h>
 #include <Keypad.h>
 
 
@@ -28,6 +27,7 @@ byte colsPin[cols] = {3, 4, 5, 6};
 Keypad keypad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols); 
 
 GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS, ENCRYPTKEY);
+
 // code
 const byte maxCodeLength = 8;
 char readCode[maxCodeLength];
@@ -37,7 +37,7 @@ byte pos;
 byte piezo = A1;
 
 byte state;
-byte messageToSend[RF69_MAX_DATA_LEN];
+
 
 void setup(){
     Serial.begin(9600);
@@ -84,33 +84,43 @@ void keypadEvent(KeypadEvent key)
   }
 }
 
-int createCodeMsg(byte* buf)
-{
-  buf[0]=VERIFYCODEMSG;
-  for(byte i=0;i<maxCodeLength;i++)
-  {
-    buf[i+1] = readCode[i];  
-  }
-  return maxCodeLength+1;
-}
-
 void sendCodeToMaster()
 {
   state = COMMUNICATION;
-  int messageLength = createCodeMsg(messageToSend);
-  Serial.println("Posielam na mastra");
-  Serial.println(readCode);
-  if (communicator.sendMessage(MASTERADDRESS, messageToSend, messageLength))
-  {
-    Serial.println("Prijate!");
-  }
-  else
-  {
-    Serial.println("Neprijate");
-  }  
+  CodeMsg msg = CodeMsg(readCode, maxCodeLength);
+  printCodeMsg(msg);
+  
+  boolean ok = communicator.send(MASTERADDRESS, msg);
+  printDeliveryStatus(ok);
   resetCodePos();
 }
 
+void printCodeMsg(CodeMsg codeMsg)
+{
+  Serial.print("C ");
+  for(byte i = 0; i < codeMsg.CodeLength; i++)
+  {
+    Serial.print((char)codeMsg.Code[i]);
+  }
+  Serial.print("(");
+  Serial.print(codeMsg.CodeLength);
+  Serial.print(") ");
+  Serial.print("[");
+  Serial.print(communicator.SenderId);
+  Serial.println("]");
+}
+
+void printDeliveryStatus(boolean ok)
+{
+    if (ok)
+    {
+      Serial.println("Delivered");
+    }
+    else
+    {
+      Serial.println("Not delivered");
+    }  
+}
 
 void pip()
 {
