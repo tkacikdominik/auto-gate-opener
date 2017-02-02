@@ -11,7 +11,7 @@
 #define MAXLONG 2147483647L
 
 GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, MASTERADDRESS, NETWORKADDRESS, ENCRYPTKEY);
-
+Logger logger = Logger();
 /******P I N S********/
 const byte led1 = 6;
 const byte led2 = 7;
@@ -21,7 +21,7 @@ const byte led3 = 8;
 const byte codeLength = 8;          
 char code[codeLength] = {'0','9','0','5','1','9','9','7'};
 
-const int numTokens = 128;
+const int numTokens = 64;
 long tokens[numTokens];
 unsigned long tokenTime[numTokens]; 
 int actualTokenIndex = 0;
@@ -29,7 +29,6 @@ unsigned long tokenValidTime = 30000;
 
 void setup() 
 {
-  Serial.begin(9600);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
   pinMode(led3, OUTPUT);
@@ -53,6 +52,11 @@ void processMessage()
       verifyCodeMsgHandler();
       break;
     }
+    case GATENUMMSG:
+    {
+      gateNumMsgHandler();
+      break;
+    }
     default:
     {
       unknownMsgHandler();
@@ -61,69 +65,32 @@ void processMessage()
   }  
 }
 
+void gateNumMsgHandler()
+{
+  GateNumMsg gateNumMsg = GateNumMsg(communicator.RecvMessage, communicator.MessageLength);
+  logger.log(gateNumMsg, communicator.SenderId, RECV);
+  
+}
+
 void verifyCodeMsgHandler()
 {
   CodeMsg msg = CodeMsg(communicator.RecvMessage, communicator.MessageLength);
-  printCodeMsg(msg);
+  logger.log(msg, communicator.SenderId, RECV);
   
   if(verifyCode(msg))
   {
     int tokenIndex = generateToken();
     TokenMsg tokenMsg = TokenMsg(tokenIndex != -1, tokens[tokenIndex]);
-    printTokenMsg(tokenMsg);    
+    logger.log(tokenMsg, communicator.SenderId, SEND);    
     boolean ok = communicator.reply(tokenMsg);
-    printDeliveryStatus(ok);    
+    logger.logDeliveryStatus(ok);    
   }  
-}
-
-void printDeliveryStatus(boolean ok)
-{
-    if (ok)
-    {
-      Serial.println("Delivered");
-    }
-    else
-    {
-      Serial.println("Not delivered");
-    }  
-}
-
-void printCodeMsg(CodeMsg codeMsg)
-{
-  Serial.print("C ");
-  for(byte i = 0; i < codeMsg.CodeLength; i++)
-  {
-    Serial.print((char)codeMsg.Code[i]);
-  }
-  Serial.print("(");
-  Serial.print(codeMsg.CodeLength);
-  Serial.print(") ");
-  Serial.print("[");
-  Serial.print(communicator.SenderId);
-  Serial.println("]");
-}
-
-void printTokenMsg(TokenMsg tokenMsg)
-{
-  Serial.print("T ");
-  Serial.print(tokenMsg.IsValid);
-  Serial.print(" (");
-  Serial.print(tokenMsg.Token);
-  Serial.print(") ");
-  Serial.print("[");
-  Serial.print(communicator.SenderId);
-  Serial.println("]");
 }
 
 void unknownMsgHandler()
 {
-  Serial.print("U");
-  Serial.println(communicator.SenderId);
-  Serial.print(" msg: ");
-  for(byte i = 0; i < communicator.MessageLength; i++)
-  {
-    Serial.print(communicator.RecvMessage[i], HEX); 
-  }
+  UnknownMsg unknownMsg = UnknownMsg(communicator.RecvMessage, communicator.MessageLength);
+  logger.log(unknownMsg, communicator.SenderId);
 }
 
 int generateToken()

@@ -1,6 +1,7 @@
+/* ack nefunguje, co ak neodpoveda, 
+*/
 #include <GateOpenerCommunicator.h>
 #include <Keypad.h>
-
 
 #define MASTERADDRESS 1
 #define CODELOCKADDRESS 2
@@ -10,7 +11,8 @@
 #define USEACK        true // Request ACKs or not
 
 #define COMMUNICATION 0
-#define KEYPAD 1
+#define CODE 1
+#define CHOOSEGATE 2
 
 const byte rows = 4;
 const byte cols = 4;
@@ -27,6 +29,7 @@ byte colsPin[cols] = {3, 4, 5, 6};
 Keypad keypad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols); 
 
 GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS, ENCRYPTKEY);
+Logger logger = Logger();
 
 // code
 const byte maxCodeLength = 8;
@@ -37,25 +40,27 @@ byte pos;
 byte piezo = A1;
 
 byte state;
-
+long actualToken;
 
 void setup(){
-    Serial.begin(9600);
     keypad.addEventListener(keypadEvent);
     resetCodePos();
     pinMode(piezo, OUTPUT);
-    state = KEYPAD;
+    state = CODE;
 }
 
 void loop()
 {
-  if(state == KEYPAD)
+  if(state == CODE || state == CHOOSEGATE)
   {
      keypad.getKey(); 
   }
   else if (state == COMMUNICATION)
   {
-    
+    if (communicator.receive())
+    {
+      processMessage();
+    }
   }
 }
 
@@ -63,63 +68,96 @@ void keypadEvent(KeypadEvent key)
 {
   if(keypad.getState()==PRESSED)
   {
-    if(key=='#')
+    if(state==CODE)
     {
-      doublePip();
-      sendCodeToMaster();  
+      processKeyCode(key);
+    }
+    else if(state==CHOOSEGATE)
+    {
+      processKeyChooseGate(key);
+    }
+  }
+}
+
+void processKeyChooseGate(KeypadEvent key)
+{
+  GateNumMsg gateNumMsg = GateNumMsg(actualToken, 1);  
+  logger.log(gateNumMsg, MASTERADDRESS, SEND);
+  boolean ok = communicator.send(MASTERADDRESS, gateNumMsg);
+  logger.logDeliveryStatus(ok);
+}
+
+void processKeyCode(KeypadEvent key)
+{
+ if(key=='#')
+  {
+    doublePip();
+    sendCodeToMaster();  
+  }
+  else
+  {
+    pip();     
+    if (pos<maxCodeLength)
+    {
+      readCode[pos] = key;
+      pos++;
     }
     else
     {
-      pip();     
-      if (pos<maxCodeLength)
-      {
-        readCode[pos] = key;
-        pos++;
-      }
-      else
-      {
-        resetCode();
-      }
+      resetCode();
     }
+  } 
+}
+
+void processMessage()
+{
+  switch(communicator.getHeader())
+  {
+    case TOKENMSG:
+    {
+      tokenMsgHandler();
+      break;
+    }
+    default:
+    {
+      unknownMsgHandler();
+      break;
+    }  
+  }  
+}
+
+void tokenMsgHandler()
+{
+  TokenMsg msg = TokenMsg(communicator.RecvMessage, communicator.MessageLength);
+  logger.log(msg, communicator.SenderId, SEND);
+
+  if(msg.IsValid)
+  {
+    actualToken = msg.Token;
+    state = CHOOSEGATE; 
   }
+  else
+  {
+    state = CODE;
+    invalidPip();
+  }
+}
+
+void unknownMsgHandler()
+{
+  UnknownMsg unknownMsg = UnknownMsg(communicator.RecvMessage, communicator.MessageLength);
+  logger.log(unknownMsg, communicator.SenderId);
 }
 
 void sendCodeToMaster()
 {
   state = COMMUNICATION;
   CodeMsg msg = CodeMsg(readCode, maxCodeLength);
-  printCodeMsg(msg);
+  logger.log(msg, communicator.SenderId, SEND);
   
   boolean ok = communicator.send(MASTERADDRESS, msg);
-  printDeliveryStatus(ok);
+  logger.logDeliveryStatus(ok);
   resetCodePos();
-}
-
-void printCodeMsg(CodeMsg codeMsg)
-{
-  Serial.print("C ");
-  for(byte i = 0; i < codeMsg.CodeLength; i++)
-  {
-    Serial.print((char)codeMsg.Code[i]);
-  }
-  Serial.print("(");
-  Serial.print(codeMsg.CodeLength);
-  Serial.print(") ");
-  Serial.print("[");
-  Serial.print(communicator.SenderId);
-  Serial.println("]");
-}
-
-void printDeliveryStatus(boolean ok)
-{
-    if (ok)
-    {
-      Serial.println("Delivered");
-    }
-    else
-    {
-      Serial.println("Not delivered");
-    }  
 }
 
 void pip()
@@ -132,6 +170,13 @@ void doublePip()
   tone(piezo, 1200, 200);
   delay(250);
   tone(piezo, 1200, 200);
+}
+
+void invalidPip()
+{
+  tone(piezo, 1200, 200);
+  delay(250);
+  tone(piezo, 800, 200);
 }
 
 void resetCode()
