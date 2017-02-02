@@ -1,6 +1,6 @@
 #include "GateOpenerCommunicator.h"
 
-GateOpenerCommunicator::GateOpenerCommunicator(byte freqBand, byte myAddress, byte networkAddress, const char* encryptKey)
+void GateOpenerCommunicator::init(byte freqBand, byte myAddress, byte networkAddress, const char* encryptKey)
 {
   _radio.initialize(freqBand, myAddress,networkAddress);
   _radio.encrypt(encryptKey);
@@ -61,6 +61,11 @@ boolean GateOpenerCommunicator::reply(CodeMsg msg)
 	return send(SenderId, msg);
 }
 
+boolean GateOpenerCommunicator::reply(GateNumMsg msg)
+{
+	return send(SenderId, msg);
+}
+
 boolean GateOpenerCommunicator::send(int senderId, TokenMsg msg)
 {
 	int msgLen = msg.createTokenMsg(MessageToSend);
@@ -70,6 +75,12 @@ boolean GateOpenerCommunicator::send(int senderId, TokenMsg msg)
 boolean GateOpenerCommunicator::send(int senderId, CodeMsg msg)
 {
 	int msgLen = msg.createCodeMsg(MessageToSend);
+	return sendMessage(senderId, MessageToSend, msgLen);
+}
+
+boolean GateOpenerCommunicator::send(int senderId, GateNumMsg msg)
+{
+	int msgLen = msg.createGateNumMsg(MessageToSend);
 	return sendMessage(senderId, MessageToSend, msgLen);
 }
 
@@ -84,7 +95,7 @@ TokenMsg::TokenMsg(byte* msg, int msgLen)
 	IsValid = msg[1] == 1;
 	if(IsValid)
 	{
-		Token = ((long)msg[2]) + ((long)msg[3] << 8) + ((long)msg[4] << 16) + ((long)msg[5] << 24);
+		Token = Encoding::byteArrayToLong(msg, 2);
 	}
 	else
 	{
@@ -103,17 +114,22 @@ int TokenMsg::createTokenMsg(byte* buf)
 	else
 	{
 	  buf[1]=1;
-	  longToByteArray(Token, buf, 2);
+	  Encoding::longToByteArray(Token, buf, 2);
 	  return 6;
 	}
 }
 
-void TokenMsg::longToByteArray(long val, byte* buf, int startIndex)
+void Encoding::longToByteArray(long val, byte* buf, int startIndex)
 {
 	buf[startIndex]=(byte)val;
 	buf[startIndex + 1]=(byte)(val >> 8);
 	buf[startIndex + 2]=(byte)(val >> 16);
 	buf[startIndex + 3]=(byte)(val >> 24);
+}
+
+long Encoding::byteArrayToLong(byte* buf, int startIndex)
+{
+	return ((long)buf[startIndex]) + ((long)buf[startIndex+1] << 8) + ((long)buf[startIndex+2] << 16) + ((long)buf[startIndex+3] << 24);
 }
 
 CodeMsg::CodeMsg(char* code, int codeLength)
@@ -136,4 +152,126 @@ int CodeMsg::createCodeMsg(byte* buf)
 		buf[i+1] = Code[i];  
 	}
 	return CodeLength+1;
+}
+
+GateNumMsg::GateNumMsg(long token, byte gateId)
+{
+	Token = token;
+	GateId = gateId;
+}
+
+GateNumMsg::GateNumMsg(byte* msg, int msgLen)
+{
+	Token = Encoding::byteArrayToLong(msg,1);
+	GateId = msg[5];
+}
+
+int GateNumMsg::createGateNumMsg(byte* buf)
+{
+	buf[0]= GATENUMMSG;
+	Encoding::longToByteArray(Token, buf, 1);
+	buf[5]= GateId;
+	return 6;
+}
+
+int OpenGateMsg::createOpenGateMsg(byte* buf)
+{
+	buf[0] = OPENGATEMSG;
+	return 1;
+}
+
+OpenGateMsg::OpenGateMsg(byte* msg, int msgLen)
+{
+	
+}
+
+void Logger::init()
+{
+	Serial.begin(9600);
+}
+
+void Logger::log(GateNumMsg msg,  byte counterpartId, boolean direction)
+{
+	 Serial.print("G ");
+	 Serial.print(msg.Token);
+	 Serial.print("  ");
+	 Serial.print(msg.GateId);
+	 logCounterpartId(counterpartId, direction);
+	 Serial.println();
+}
+
+void Logger::log(CodeMsg msg, byte counterpartId, boolean direction)
+{
+	Serial.print("C ");
+	for(byte i = 0; i < msg.CodeLength; i++)
+	{
+		Serial.print((char)msg.Code[i]);
+	}
+	Serial.print(" ");
+	Serial.print(msg.CodeLength);
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
+}
+
+void Logger::log(TokenMsg msg, byte counterpartId, boolean direction)
+{
+	Serial.print("T ");
+	Serial.print(msg.IsValid);
+	Serial.print(" ");
+	Serial.print(msg.Token);
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
+}
+
+void Logger::logDeliveryStatus(boolean ok)
+{
+    if (ok)
+    {
+      Serial.println("Delivered");
+    }
+    else
+    {
+      Serial.println("Not delivered");
+    }  
+}
+
+void Logger::logCounterpartId(byte counterpartId, boolean direction)
+{
+	Serial.print("[");
+	if(direction==SEND)
+	{
+		Serial.print("->");
+	}
+	Serial.print(counterpartId);
+	if(direction==RECV)
+	{
+		Serial.print("->");
+	}
+	Serial.print("]");
+	
+}
+
+void Logger::log(UnknownMsg msg, byte counterpartId)
+{
+	Serial.print("U ");
+	for(byte i = 0; i < msg.MessageLength; i++)
+	{
+		Serial.print(msg.Message[i], HEX); 
+		Serial.print(" ");
+	}
+	logCounterpartId(counterpartId, RECV);
+	Serial.println();
+}
+
+UnknownMsg::UnknownMsg(byte* msg, int msgLen)
+{
+	Message = msg;
+	MessageLength = msgLen;
+}
+
+void Logger::log(OpenGateMsg msg, byte counterpartId, boolean direction)
+{
+	Serial.print("O ");
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
 }

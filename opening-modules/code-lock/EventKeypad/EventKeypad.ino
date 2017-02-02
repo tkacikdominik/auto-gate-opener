@@ -28,8 +28,8 @@ byte rowsPin[rows] = {7, 8, 9, A0};
 byte colsPin[cols] = {3, 4, 5, 6};
 Keypad keypad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols); 
 
-GateOpenerCommunicator communicator = GateOpenerCommunicator(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS, ENCRYPTKEY);
-Logger logger = Logger();
+GateOpenerCommunicator communicator;
+Logger logger;
 
 // code
 const byte maxCodeLength = 8;
@@ -42,11 +42,15 @@ byte piezo = A1;
 byte state;
 long actualToken;
 
-void setup(){
-    keypad.addEventListener(keypadEvent);
-    resetCodePos();
-    pinMode(piezo, OUTPUT);
-    state = CODE;
+void setup()
+{
+  logger.init();
+  communicator.init(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS, ENCRYPTKEY);
+  
+  keypad.addEventListener(keypadEvent);
+  resetCodePos();
+  pinMode(piezo, OUTPUT);
+  state = CODE;
 }
 
 void loop()
@@ -129,7 +133,7 @@ void processMessage()
 void tokenMsgHandler()
 {
   TokenMsg msg = TokenMsg(communicator.RecvMessage, communicator.MessageLength);
-  logger.log(msg, communicator.SenderId, SEND);
+  logger.log(msg, communicator.SenderId, RECV);
 
   if(msg.IsValid)
   {
@@ -153,7 +157,7 @@ void sendCodeToMaster()
 {
   state = COMMUNICATION;
   CodeMsg msg = CodeMsg(readCode, maxCodeLength);
-  logger.log(msg, communicator.SenderId, SEND);
+  logger.log(msg, MASTERADDRESS, SEND);
   
   boolean ok = communicator.send(MASTERADDRESS, msg);
   logger.logDeliveryStatus(ok);
