@@ -69,6 +69,7 @@ class UnknownMsg
 class OpenGateMsg
 {
 	public:
+		OpenGateMsg();
 		OpenGateMsg(byte* msg, int msgLen);
 		int createOpenGateMsg(byte* buf);
 		
@@ -84,7 +85,8 @@ class GateOpenerCommunicator
   
     void init(byte freqBand, byte myAddress, byte networkAddress, const char* encryptKey);
 	
-    boolean receive();
+    boolean receive(unsigned long timeoutMillis);
+	boolean receive();
 	byte getHeader();	
 		
 	boolean reply(TokenMsg msg);
@@ -92,6 +94,7 @@ class GateOpenerCommunicator
 	boolean reply(GateNumMsg msg);
 	boolean send(int senderId, TokenMsg msg);
 	boolean send(int senderId, CodeMsg msg);
+	boolean send(int senderId, OpenGateMsg msg);
 	boolean send(int senderId, GateNumMsg msg);
   private:  
 	boolean sendMessage(int senderId, byte* buf, int messageLength);

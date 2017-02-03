@@ -35,12 +35,17 @@ Logger logger;
 const byte maxCodeLength = 8;
 char readCode[maxCodeLength];
 byte pos;
+unsigned long keyTimeout = 0;
 
 // piezo pin 
 byte piezo = A1;
+byte GLed = A4;
+byte RLed = A5;
 
 byte state;
 long actualToken;
+const unsigned long timeoutTime = 5000;
+const unsigned long keyTimeoutTime = 3000;
 
 void setup()
 {
@@ -50,6 +55,9 @@ void setup()
   keypad.addEventListener(keypadEvent);
   resetCodePos();
   pinMode(piezo, OUTPUT);
+  pinMode(RLed, OUTPUT);
+  pinMode(GLed, OUTPUT);
+  ledOff();
   state = CODE;
 }
 
@@ -57,15 +65,53 @@ void loop()
 {
   if(state == CODE || state == CHOOSEGATE)
   {
-     keypad.getKey(); 
+     keypad.getKey();
+     if(keyTimeout != 0)
+     {   
+       if(millis() > keyTimeout)
+       {
+        resetState();
+       }
+       else
+       {
+        if(state == CODE)
+        {
+          ledCodeOn();
+        }
+        else if(state == CHOOSEGATE)
+        {
+          ledGateOn();
+        }
+       }       
+     }  
+        
   }
   else if (state == COMMUNICATION)
   {
-    if (communicator.receive())
+    ledCommunicationOn();
+    if (communicator.receive(timeoutTime))
     {
       processMessage();
     }
+    else
+    {
+      resetState();
+    }
   }
+}
+
+void resetState()
+{
+  invalidPip();
+  goToStateCode();
+}
+
+void goToStateCode()
+{
+  resetCodePos();
+  keyTimeout = 0;
+  ledOff();
+  state = CODE;  
 }
 
 void keypadEvent(KeypadEvent key)
@@ -79,6 +125,7 @@ void keypadEvent(KeypadEvent key)
     else if(state==CHOOSEGATE)
     {
       processKeyChooseGate(key);
+      state = CODE;
     }
   }
 }
@@ -87,16 +134,31 @@ void processKeyChooseGate(KeypadEvent key)
 {
   GateNumMsg gateNumMsg = GateNumMsg(actualToken, 1);  
   logger.log(gateNumMsg, MASTERADDRESS, SEND);
+  
   boolean ok = communicator.send(MASTERADDRESS, gateNumMsg);
   logger.logDeliveryStatus(ok);
+  if(ok)
+  {
+    validPip();
+  }
+  else
+  {
+    invalidPip();
+  }
+  goToStateCode();  
 }
 
 void processKeyCode(KeypadEvent key)
 {
- if(key=='#')
+  keyTimeout = millis() + keyTimeoutTime;
+  if(key=='#')
   {
     doublePip();
     sendCodeToMaster();  
+  }
+  else if(key=='*')
+  {
+    resetState();
   }
   else
   {
@@ -142,8 +204,8 @@ void tokenMsgHandler()
   }
   else
   {
-    state = CODE;
     invalidPip();
+    state = CODE;
   }
 }
 
@@ -158,7 +220,6 @@ void sendCodeToMaster()
   state = COMMUNICATION;
   CodeMsg msg = CodeMsg(readCode, maxCodeLength);
   logger.log(msg, MASTERADDRESS, SEND);
-  
   boolean ok = communicator.send(MASTERADDRESS, msg);
   logger.logDeliveryStatus(ok);
   resetCodePos();
@@ -166,7 +227,7 @@ void sendCodeToMaster()
 
 void pip()
 {
-  tone(piezo, 1000, 100); 
+  tone(piezo, 1000, 100);
 }
 
 void doublePip()
@@ -176,11 +237,16 @@ void doublePip()
   tone(piezo, 1200, 200);
 }
 
+void validPip()
+{
+  tone(piezo, 1000, 500);
+}
+
 void invalidPip()
 {
   tone(piezo, 1200, 200);
   delay(250);
-  tone(piezo, 800, 200);
+  tone(piezo, 200, 200);
 }
 
 void resetCode()
@@ -200,4 +266,28 @@ void resetCodePos()
 {
   resetCode();
   resetPos();
+}
+
+void ledCodeOn()
+{
+  digitalWrite(GLed, HIGH);
+  digitalWrite(RLed, LOW);
+}
+
+void ledGateOn()
+{
+  digitalWrite(GLed, LOW);
+  digitalWrite(RLed, HIGH);
+}
+
+void ledCommunicationOn()
+{
+  digitalWrite(GLed, HIGH);
+  digitalWrite(RLed, HIGH);
+}
+
+void ledOff()
+{
+  digitalWrite(GLed, LOW);
+  digitalWrite(RLed, LOW);
 }

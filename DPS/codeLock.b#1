@@ -1905,18 +1905,18 @@ design rules under a new name.</description>
 <wire x1="95.68" y1="69.02" x2="95.68" y2="65.77" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$19">
-<wire x1="73.71" y1="68.7" x2="73.72" y2="71.93" width="1.4224" layer="16"/>
-<wire x1="73.72" y1="71.93" x2="95.76" y2="71.9" width="1.4224" layer="16"/>
-<wire x1="95.76" y1="71.9" x2="95.67" y2="78.54" width="1.4224" layer="16"/>
+<wire x1="73.71" y1="68.7" x2="73.73" y2="71.19" width="1.6764" layer="16"/>
+<wire x1="73.73" y1="71.19" x2="95.69" y2="71.19" width="1.6764" layer="16"/>
+<wire x1="95.69" y1="71.19" x2="95.67" y2="78.54" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$21">
-<wire x1="71.14" y1="68.79" x2="71.12" y2="73.52" width="1.6764" layer="16"/>
-<wire x1="71.12" y1="73.52" x2="91.65" y2="73.52" width="1.6764" layer="16"/>
-<wire x1="91.65" y1="73.52" x2="91.67" y2="78.44" width="1.6764" layer="16"/>
+<wire x1="71.14" y1="68.79" x2="71.15" y2="72.91" width="1.6764" layer="16"/>
+<wire x1="71.15" y1="72.91" x2="91.68" y2="72.91" width="1.6764" layer="16"/>
+<wire x1="91.68" y1="72.91" x2="91.67" y2="78.44" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$24">
-<wire x1="66.02" y1="68.72" x2="66.03" y2="75.22" width="1.6764" layer="16"/>
-<wire x1="66.03" y1="75.22" x2="89.47" y2="75.22" width="1.6764" layer="16"/>
+<wire x1="66.02" y1="68.72" x2="66.03" y2="74.64" width="1.6764" layer="16"/>
+<wire x1="66.03" y1="74.64" x2="89.65" y2="74.64" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$32">
 <wire x1="87.67" y1="80.23" x2="87.67" y2="83.82" width="1.6764" layer="16"/>
@@ -1967,9 +1967,9 @@ design rules under a new name.</description>
 <wire x1="62.28" y1="80.03" x2="55.37" y2="80.03" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$12">
-<wire x1="62.29" y1="69.14" x2="62.35" y2="76.93" width="1.6764" layer="16"/>
-<wire x1="62.35" y1="76.93" x2="85.68" y2="76.93" width="1.6764" layer="16"/>
-<wire x1="85.68" y1="76.93" x2="85.66" y2="78.65" width="1.6764" layer="16"/>
+<wire x1="62.29" y1="69.14" x2="62.35" y2="76.4" width="1.6764" layer="16"/>
+<wire x1="62.35" y1="76.4" x2="85.68" y2="76.4" width="1.6764" layer="16"/>
+<wire x1="85.68" y1="76.4" x2="85.66" y2="78.65" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$14">
 <wire x1="55.89" y1="47.36" x2="55.6" y2="47.07" width="1.6764" layer="16"/>
@@ -1981,8 +1981,8 @@ design rules under a new name.</description>
 </signal>
 <signal name="S$23">
 <wire x1="93.69" y1="80.38" x2="93.69" y2="81.97" width="1.6764" layer="16"/>
-<wire x1="93.69" y1="81.97" x2="89.52" y2="81.97" width="1.6764" layer="16"/>
-<wire x1="89.52" y1="81.97" x2="89.52" y2="75.19" width="1.6764" layer="16"/>
+<wire x1="93.69" y1="81.97" x2="89.68" y2="81.97" width="1.6764" layer="16"/>
+<wire x1="89.68" y1="81.97" x2="89.68" y2="74.67" width="1.6764" layer="16"/>
 </signal>
 <signal name="S$26">
 <wire x1="83.18" y1="79.35" x2="78.9" y2="79.29" width="1.6764" layer="16"/>

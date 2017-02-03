@@ -16,6 +16,24 @@ boolean GateOpenerCommunicator::receive()
   return false;
 }
 
+boolean GateOpenerCommunicator::receive(unsigned long timeoutMillis)
+{
+	unsigned long maxTime = millis()+timeoutMillis;
+	while(1)
+	{
+		boolean received = receive();
+		if(received)
+		{
+			return true;
+		}
+		if(millis() > maxTime)
+		{
+			break;
+		}
+	}
+	return false;
+}
+
 void GateOpenerCommunicator::copyMessage()
 {
   SenderId = _radio.SENDERID;
@@ -81,6 +99,12 @@ boolean GateOpenerCommunicator::send(int senderId, CodeMsg msg)
 boolean GateOpenerCommunicator::send(int senderId, GateNumMsg msg)
 {
 	int msgLen = msg.createGateNumMsg(MessageToSend);
+	return sendMessage(senderId, MessageToSend, msgLen);
+}
+
+boolean GateOpenerCommunicator::send(int senderId, OpenGateMsg msg)
+{
+	int msgLen = msg.createOpenGateMsg(MessageToSend);
 	return sendMessage(senderId, MessageToSend, msgLen);
 }
 
@@ -181,6 +205,11 @@ int OpenGateMsg::createOpenGateMsg(byte* buf)
 }
 
 OpenGateMsg::OpenGateMsg(byte* msg, int msgLen)
+{
+	
+}
+
+OpenGateMsg::OpenGateMsg()
 {
 	
 }

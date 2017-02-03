@@ -1,13 +1,16 @@
+// Generovanie Token kodu, zabezpecit pseudonahodnot 
+
+
 #include <GateOpenerCommunicator.h>
 
 #define MASTERADDRESS 1
 #define CODELOCKADDRESS 2
+#define GATEADDRESS 3 
 #define NETWORKADDRESS 0
 #define FREQUENCY     RF69_868MHZ
 #define ENCRYPTKEY    "TOPSECRETPASSWRD" 
 #define USEACK        true // Request ACKs or not
 
-#define MINLONG -2147483648L
 #define MAXLONG 2147483647L
 
 GateOpenerCommunicator communicator;
@@ -35,6 +38,7 @@ void setup()
   pinMode(led2, OUTPUT);
   pinMode(led3, OUTPUT);
   randomSeed(analogRead(0));
+  start();
 }
 
 void loop() 
@@ -71,7 +75,10 @@ void gateNumMsgHandler()
 {
   GateNumMsg gateNumMsg = GateNumMsg(communicator.RecvMessage, communicator.MessageLength);
   logger.log(gateNumMsg, communicator.SenderId, RECV);
-  
+  OpenGateMsg openGateMsg = OpenGateMsg();
+  logger.log(openGateMsg, GATEADDRESS, SEND);
+  boolean ok = communicator.send(GATEADDRESS, openGateMsg);
+  logger.logDeliveryStatus(ok); 
 }
 
 void verifyCodeMsgHandler()
@@ -87,6 +94,10 @@ void verifyCodeMsgHandler()
     boolean ok = communicator.reply(tokenMsg);
     logger.logDeliveryStatus(ok);    
   }  
+  else
+  {
+    
+  }
 }
 
 void unknownMsgHandler()
@@ -104,7 +115,7 @@ int generateToken()
   {
     return -1;
   }
-  long token = random(MINLONG,MAXLONG);
+  long token = random(0,MAXLONG);
   tokens[actualTokenIndex]=token;
   tokenTime[actualTokenIndex]=actualTime + tokenValidTime;
   return actualTokenIndex;
@@ -150,7 +161,7 @@ boolean verifyCode(CodeMsg msg)
 
 void grantAccess()
 {    
-    Serial.println("GA");
+    Serial.println("AG");
     digitalWrite(led1, HIGH);
     delay(180);
     digitalWrite(led2, HIGH);  
@@ -163,4 +174,20 @@ void grantAccess()
     delay(180);
     digitalWrite(led3, LOW);                     
     delay(180);
-} 
+}
+
+ void start()
+{    
+    digitalWrite(led1, HIGH);
+    delay(180);
+    digitalWrite(led2, HIGH);  
+    delay(180);
+    digitalWrite(led3, HIGH);
+    delay(180);
+    digitalWrite(led1, LOW);
+    delay(180);
+    digitalWrite(led2, LOW);  
+    delay(180);
+    digitalWrite(led3, LOW);                     
+    delay(180);
+}
