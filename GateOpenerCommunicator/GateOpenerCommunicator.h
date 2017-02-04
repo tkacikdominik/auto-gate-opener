@@ -92,7 +92,7 @@ class RequestAddressMsg
 		
 		long Token;
 		
-		int RequestAddressMsg(byte* buf); 
+		int createRequestAddressMsg(byte* buf); 
 };
 
 class AddressMsg
@@ -104,7 +104,7 @@ class AddressMsg
 		byte Address;
 		long Token;
 		
-		int AddressMsg(byte* buf); 
+		int createAddressMsg(byte* buf); 
 };
 
 class Random
@@ -123,43 +123,6 @@ class Random
 		int _pwmPin;
 };
 
-class GateOpenerCommunicator
-{
-  public:
-	byte RecvMessage[RF69_MAX_DATA_LEN];
-    byte MessageLength;
-    byte SenderId;  
-	byte MessageToSend[RF69_MAX_DATA_LEN];
-  
-    void init(boolean mode, Random rnd, Logger logger);
-	
-    boolean receive(unsigned long timeoutMillis);
-	boolean receive();
-	byte getHeader();	
-		
-	boolean reply(TokenMsg msg);
-	boolean reply(CodeMsg msg);
-	boolean reply(GateNumMsg msg);
-	boolean send(int receiverId, TokenMsg msg);
-	boolean send(int receiverId, CodeMsg msg);
-	boolean send(int receiverId, OpenGateMsg msg);
-	boolean send(int receiverId, GateNumMsg msg);
-	boolean send(int receiverId, AddressMsg msg);
-	boolean broadcast(RequestAddressMsg msg);
-  private:  
-	byte _myAddress;
-	byte _masterAddress;
-	boolean _mode;
-	boolean _connected;
-	RFM69 _radio; 
-	Random _rnd;
-	Logger _logger;
-	
-	boolean sendMessage(int senderId, byte* buf, int messageLength);    	
-    void copyMessage();
-	void fillEncryptKey(char* buffer);
-};
-
 class Logger
 {
 	public:
@@ -175,6 +138,49 @@ class Logger
 	private: 
 		void logCounterpartId(byte counterpartId, boolean direction);
 };
+
+class GateOpenerCommunicator
+{
+  public:
+	byte RecvMessage[RF69_MAX_DATA_LEN];
+    byte MessageLength;
+    byte SenderId;  
+	byte MessageToSend[RF69_MAX_DATA_LEN];
+	byte MyAddress;
+	byte MasterAddress;
+    
+	void init(boolean mode, Random rnd, Logger logger);
+	
+    boolean receive(unsigned long timeoutMillis);
+	boolean receive();
+	byte getHeader();	
+		
+	boolean reply(TokenMsg msg);
+	boolean reply(CodeMsg msg);
+	boolean reply(GateNumMsg msg);
+	boolean reply(AddressMsg msg);
+	boolean send(int receiverId, TokenMsg msg);
+	boolean send(int receiverId, CodeMsg msg);
+	boolean send(int receiverId, OpenGateMsg msg);
+	boolean send(int receiverId, GateNumMsg msg);
+	boolean send(int receiverId, AddressMsg msg);
+	boolean broadcast(RequestAddressMsg msg);
+  private:  	
+	
+	boolean _mode;
+	boolean _connected;
+	RFM69 _radio; 
+	Random _rnd;
+	Logger _logger;
+	char _encryptKey[16];
+	
+	boolean sendMessage(int senderId, byte* buf, int messageLength);    	
+    void copyMessage();
+	void fillEncryptKey();
+	void connect();
+};
+
+
 
 
 

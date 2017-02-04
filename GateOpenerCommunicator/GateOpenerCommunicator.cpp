@@ -6,10 +6,12 @@ void GateOpenerCommunicator::init(boolean mode, Random rnd, Logger logger)
 	_mode = mode;
 	_rnd = rnd;
 	_logger = logger;
-	char encryptKey[16];
-	fillEncryptKey(encryptKey);
-	_radio.initialize(FREQUENCY, _rnd.generateByteArd(0,254), NETWORKADDRESS);
-	_radio.encrypt(encryptKey);
+	
+	fillEncryptKey();
+	MyAddress = _rnd.generateByteArd(0,254);
+	
+	_radio.initialize(FREQUENCY, MyAddress, NETWORKADDRESS);
+	_radio.encrypt(_encryptKey);
 	
 	connect();
 }
@@ -22,7 +24,7 @@ void GateOpenerCommunicator::connect()
 		{
 			long token = _rnd.generateLong();
 			RequestAddressMsg msg = RequestAddressMsg(token);
-			_logger.log(msg);
+			_logger.log(msg, 255, SEND);
 			broadcast(msg);
 			
 			while(true)
@@ -37,9 +39,10 @@ void GateOpenerCommunicator::connect()
 						if(addressMsg.Token == token)
 						{
 							_radio.initialize(FREQUENCY, addressMsg.Address, NETWORKADDRESS);
-							_radio.encrypt(encryptKey);
+							_radio.encrypt(_encryptKey);
 							_connected = true;
-							_masterAddress = SenderId;
+							MyAddress = addressMsg.Address;
+							MasterAddress = SenderId;
 							break;
 						}
 					}
@@ -53,30 +56,31 @@ void GateOpenerCommunicator::connect()
 	}
 	else
 	{	
+		MasterAddress = MyAddress;
 		_connected = true;
 	} 
 }
 
-void GateOpenerCommunicator::fillEncryptKey(char* buffer)
+void GateOpenerCommunicator::fillEncryptKey()
 {
 	byte isEncryptionKeyinEpprom = EEPROM.read(0);
 	if(isEncryptionKeyinEpprom == 0)
 	{
 		for(byte i = 0;i < 16; i++)
 		{
-			buffer[i] = EEPROM.read(i+1);
+			_encryptKey[i] = EEPROM.read(i+1);
 		}	
 	}
 	else
 	{
 		for(byte i = 0; i < 16; i++)
 		{
-			buffer[i] = i;
+			_encryptKey[i] = i;
 		}	
 		EEPROM.update(0, 0);
 		for(byte i = 0;i < 16; i++)
 		{
-			EEPROM.update(i+1, buffer[i]);
+			EEPROM.update(i+1, _encryptKey[i]);
 		}
 	}
 }
@@ -161,6 +165,11 @@ boolean GateOpenerCommunicator::reply(CodeMsg msg)
 }
 
 boolean GateOpenerCommunicator::reply(GateNumMsg msg)
+{
+	return send(SenderId, msg);
+}
+
+boolean GateOpenerCommunicator::reply(AddressMsg msg)
 {
 	return send(SenderId, msg);
 }
@@ -330,10 +339,10 @@ AddressMsg::AddressMsg(byte* msg, int msgLen)
 	Address = msg[5];
 }
 
-int AddressMsg::AddressMsg(byte* buf)
+int AddressMsg::createAddressMsg(byte* buf)
 {
 	buf[0] = ADDRESSMSG;
-	Encoding::longToByteArray(Token, buf, 1)
+	Encoding::longToByteArray(Token, buf, 1);
 	buf[5] = Address;
 	return 5;
 }
@@ -504,7 +513,7 @@ long Random::generateLong()
 
 int Random::generateInt()
 {	
-	return ({int}generateByte()) + ((int)generateByte() << 8);
+	return ((int)generateByte()) + ((int)generateByte() << 8);
 }
 
 byte Random::generateByteArd(byte min, byte max)

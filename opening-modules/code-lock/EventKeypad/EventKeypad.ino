@@ -1,9 +1,6 @@
 #include <GateOpenerCommunicator.h>
 #include <Keypad.h>
 
-#define MASTERADDRESS 255
-#define CODELOCKADDRESS 0
-
 #define COMMUNICATION 0
 #define CODE 1
 #define CHOOSEGATE 2
@@ -18,12 +15,13 @@ char keys[rows][cols] =
 {'*','0','#','D'}
 };
 
-byte rowsPin[rows] = {7, 8, 9, A0};
+byte rowsPin[rows] = {7, 8, A2, A1};
 byte colsPin[cols] = {3, 4, 5, 6};
 Keypad keypad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols); 
 
 GateOpenerCommunicator communicator;
 Logger logger;
+Random rnd;
 
 // code
 const byte maxCodeLength = 8;
@@ -32,9 +30,11 @@ byte pos;
 unsigned long keyTimeout = 0;
 
 // piezo pin 
-byte piezo = A1;
+byte piezo = A3;
 byte GLed = A4;
 byte RLed = A5;
+const byte analogPin = A0;
+const byte pwmPin = 9;
 
 byte state;
 long actualToken;
@@ -43,11 +43,13 @@ const unsigned long keyTimeoutTime = 3000;
 
 void setup()
 {
+  ledCommunicationOn();
+  rnd.init(analogPin, pwmPin);
   logger.init();
+  communicator.init(SLAVE, rnd, logger);
   pinMode(piezo, OUTPUT);
   pinMode(RLed, OUTPUT);
   pinMode(GLed, OUTPUT);
-  communicator.init(SLAVE,CODELOCKADDRESS);
   keypad.addEventListener(keypadEvent);
   resetCodePos();  
   state = CODE;
@@ -126,9 +128,9 @@ void keypadEvent(KeypadEvent key)
 void processKeyChooseGate(KeypadEvent key)
 {
   GateNumMsg gateNumMsg = GateNumMsg(actualToken, 1);  
-  logger.log(gateNumMsg, MASTERADDRESS, SEND);
+  logger.log(gateNumMsg, communicator.MasterAddress, SEND);
   
-  boolean ok = communicator.send(MASTERADDRESS, gateNumMsg);
+  boolean ok = communicator.send(communicator.MasterAddress, gateNumMsg);
   logger.logDeliveryStatus(ok);
   if(ok)
   {
@@ -212,8 +214,8 @@ void sendCodeToMaster()
 {
   state = COMMUNICATION;
   CodeMsg msg = CodeMsg(readCode, maxCodeLength);
-  logger.log(msg, MASTERADDRESS, SEND);
-  boolean ok = communicator.broadcast(msg);
+  logger.log(msg, communicator.MasterAddress, SEND);
+  boolean ok = communicator.send(communicator.MasterAddress, msg);
   logger.logDeliveryStatus(ok);
   resetCodePos();
 }
