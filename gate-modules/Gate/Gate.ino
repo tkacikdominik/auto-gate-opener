@@ -1,12 +1,7 @@
 #include <GateOpenerCommunicator.h>
 
   #define MASTERADDRESS 1
-  #define CODELOCKADDRESS 2
   #define GATEADDRESS 3 
-  #define NETWORKADDRESS 0
-  #define FREQUENCY     RF69_868MHZ
-  #define ENCRYPTKEY    "TOPSECRETPASSWRD" 
-  #define USEACK        true // Request ACKs or not
 
 Logger logger;
 GateOpenerCommunicator communicator;
@@ -17,7 +12,7 @@ void setup()
 {
   pinMode(3, OUTPUT);
   logger.init();
-  communicator.init(FREQUENCY, GATEADDRESS, NETWORKADDRESS, ENCRYPTKEY);
+  communicator.init(GATEADDRESS);
 }
 
 void loop() 

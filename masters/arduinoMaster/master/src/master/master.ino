@@ -1,20 +1,15 @@
-// Generovanie Token kodu, zabezpecit pseudonahodnot 
-
 
 #include <GateOpenerCommunicator.h>
 
-#define MASTERADDRESS 1
-#define CODELOCKADDRESS 2
-#define GATEADDRESS 3 
-#define NETWORKADDRESS 0
-#define FREQUENCY     RF69_868MHZ
-#define ENCRYPTKEY    "TOPSECRETPASSWRD" 
-#define USEACK        true // Request ACKs or not
+#define MASTERADDRESS 0
+#define GATEADDRESS 0
 
 #define MAXLONG 2147483647L
 
 GateOpenerCommunicator communicator;
 Logger logger;
+
+
 /******P I N S********/
 const byte led1 = 6;
 const byte led2 = 7;
@@ -33,7 +28,7 @@ unsigned long tokenValidTime = 30000;
 void setup() 
 {
   logger.init();
-  communicator.init(FREQUENCY, MASTERADDRESS, NETWORKADDRESS, ENCRYPTKEY);
+  communicator.init(MASTER, MASTERADDRESS);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
   pinMode(led3, OUTPUT);

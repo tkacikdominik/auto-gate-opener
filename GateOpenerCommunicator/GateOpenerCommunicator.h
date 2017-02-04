@@ -3,15 +3,24 @@
 
 #include <RFM69.h>
 #include <Arduino.h>
+#include <EEPROM.h>
 
 #define RECV true
 #define SEND false
+
+#define MASTER true
+#define SLAVE false
+
 #define EMPTYMSG 0
 #define VERIFYCODEMSG 1
 #define TOKENMSG 2 
 #define GATENUMMSG 3
 #define OPENGATEMSG 4
+#define REQUESTADDRESSMSG 5
+#define ADDRESSMSG 6 
 
+#define NETWORKADDRESS 0
+#define FREQUENCY RF69_868MHZ
 
 
 class Encoding
@@ -75,6 +84,45 @@ class OpenGateMsg
 		
 };
 
+class RequestAddressMsg
+{
+	public:
+		RequestAddressMsg(long token);
+		RequestAddressMsg(byte* msg, int msgLen);
+		
+		long Token;
+		
+		int RequestAddressMsg(byte* buf); 
+};
+
+class AddressMsg
+{
+	public:
+		AddressMsg(long token, byte address);
+		AddressMsg(byte* msg, int msgLen);
+		
+		byte Address;
+		long Token;
+		
+		int AddressMsg(byte* buf); 
+};
+
+class Random
+{
+	public:
+		void init(int analogPin, int pwmPin);
+		byte generateByte();
+		long generateLong();
+		int generateInt();
+		byte generateByteArd(byte min, byte max);
+		int generateIntArd(int min, int max);
+		byte getNoise();
+	private:
+		int _refNum;
+		int _analogPin;
+		int _pwmPin;
+};
+
 class GateOpenerCommunicator
 {
   public:
@@ -83,7 +131,7 @@ class GateOpenerCommunicator
     byte SenderId;  
 	byte MessageToSend[RF69_MAX_DATA_LEN];
   
-    void init(byte freqBand, byte myAddress, byte networkAddress, const char* encryptKey);
+    void init(boolean mode, Random rnd, Logger logger);
 	
     boolean receive(unsigned long timeoutMillis);
 	boolean receive();
@@ -92,14 +140,24 @@ class GateOpenerCommunicator
 	boolean reply(TokenMsg msg);
 	boolean reply(CodeMsg msg);
 	boolean reply(GateNumMsg msg);
-	boolean send(int senderId, TokenMsg msg);
-	boolean send(int senderId, CodeMsg msg);
-	boolean send(int senderId, OpenGateMsg msg);
-	boolean send(int senderId, GateNumMsg msg);
+	boolean send(int receiverId, TokenMsg msg);
+	boolean send(int receiverId, CodeMsg msg);
+	boolean send(int receiverId, OpenGateMsg msg);
+	boolean send(int receiverId, GateNumMsg msg);
+	boolean send(int receiverId, AddressMsg msg);
+	boolean broadcast(RequestAddressMsg msg);
   private:  
-	boolean sendMessage(int senderId, byte* buf, int messageLength);
-    RFM69 _radio; 	
+	byte _myAddress;
+	byte _masterAddress;
+	boolean _mode;
+	boolean _connected;
+	RFM69 _radio; 
+	Random _rnd;
+	Logger _logger;
+	
+	boolean sendMessage(int senderId, byte* buf, int messageLength);    	
     void copyMessage();
+	void fillEncryptKey(char* buffer);
 };
 
 class Logger
@@ -110,10 +168,14 @@ class Logger
 		void log(CodeMsg msg, byte counterpartId, boolean direction);
 		void log(OpenGateMsg msg, byte counterpartId, boolean direction);
 		void log(TokenMsg msg, byte counterpartId, boolean direction);		
+		void log(RequestAddressMsg msg, byte counterpartId, boolean direction);
+		void log(AddressMsg msg, byte counterpartId, boolean direction);
 		void log(UnknownMsg msg, byte counterpartId);
 		void logDeliveryStatus(boolean ok);		
 	private: 
 		void logCounterpartId(byte counterpartId, boolean direction);
 };
+
+
 
 #endif

@@ -1,9 +1,84 @@
 #include "GateOpenerCommunicator.h"
 
-void GateOpenerCommunicator::init(byte freqBand, byte myAddress, byte networkAddress, const char* encryptKey)
+void GateOpenerCommunicator::init(boolean mode, Random rnd, Logger logger)
 {
-  _radio.initialize(freqBand, myAddress,networkAddress);
-  _radio.encrypt(encryptKey);
+	_connected = false;
+	_mode = mode;
+	_rnd = rnd;
+	_logger = logger;
+	char encryptKey[16];
+	fillEncryptKey(encryptKey);
+	_radio.initialize(FREQUENCY, _rnd.generateByteArd(0,254), NETWORKADDRESS);
+	_radio.encrypt(encryptKey);
+	
+	connect();
+}
+
+void GateOpenerCommunicator::connect()
+{
+	if(_mode == SLAVE)
+	{
+		while(_connected == false)
+		{
+			long token = _rnd.generateLong();
+			RequestAddressMsg msg = RequestAddressMsg(token);
+			_logger.log(msg);
+			broadcast(msg);
+			
+			while(true)
+			{
+				boolean received = receive(15000);
+				if(received)
+				{
+					byte header = getHeader();		
+					if(header == ADDRESSMSG)
+					{
+						AddressMsg addressMsg = AddressMsg(RecvMessage, MessageLength);
+						if(addressMsg.Token == token)
+						{
+							_radio.initialize(FREQUENCY, addressMsg.Address, NETWORKADDRESS);
+							_radio.encrypt(encryptKey);
+							_connected = true;
+							_masterAddress = SenderId;
+							break;
+						}
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+	}
+	else
+	{	
+		_connected = true;
+	} 
+}
+
+void GateOpenerCommunicator::fillEncryptKey(char* buffer)
+{
+	byte isEncryptionKeyinEpprom = EEPROM.read(0);
+	if(isEncryptionKeyinEpprom == 0)
+	{
+		for(byte i = 0;i < 16; i++)
+		{
+			buffer[i] = EEPROM.read(i+1);
+		}	
+	}
+	else
+	{
+		for(byte i = 0; i < 16; i++)
+		{
+			buffer[i] = i;
+		}	
+		EEPROM.update(0, 0);
+		for(byte i = 0;i < 16; i++)
+		{
+			EEPROM.update(i+1, buffer[i]);
+		}
+	}
 }
 
 boolean GateOpenerCommunicator::receive()
@@ -48,6 +123,12 @@ void GateOpenerCommunicator::copyMessage()
   }
 }
 
+boolean GateOpenerCommunicator::broadcast(RequestAddressMsg msg)
+{
+	int msgLen = msg.createRequestAddressMsg(MessageToSend);
+	_radio.send(255, MessageToSend, msgLen, false);
+}
+
 boolean GateOpenerCommunicator::sendMessage(int senderId, byte* buf, int messageLength)
 { 
   if (_radio.sendWithRetry(senderId, buf, messageLength, 2, 20))
@@ -84,28 +165,34 @@ boolean GateOpenerCommunicator::reply(GateNumMsg msg)
 	return send(SenderId, msg);
 }
 
-boolean GateOpenerCommunicator::send(int senderId, TokenMsg msg)
+boolean GateOpenerCommunicator::send(int receiverId, TokenMsg msg)
 {
 	int msgLen = msg.createTokenMsg(MessageToSend);
-	return sendMessage(senderId, MessageToSend, msgLen);	
+	return sendMessage(receiverId, MessageToSend, msgLen);	
 }
 
-boolean GateOpenerCommunicator::send(int senderId, CodeMsg msg)
+boolean GateOpenerCommunicator::send(int receiverId, CodeMsg msg)
 {
 	int msgLen = msg.createCodeMsg(MessageToSend);
-	return sendMessage(senderId, MessageToSend, msgLen);
+	return sendMessage(receiverId, MessageToSend, msgLen);
 }
 
-boolean GateOpenerCommunicator::send(int senderId, GateNumMsg msg)
+boolean GateOpenerCommunicator::send(int receiverId, GateNumMsg msg)
 {
 	int msgLen = msg.createGateNumMsg(MessageToSend);
-	return sendMessage(senderId, MessageToSend, msgLen);
+	return sendMessage(receiverId, MessageToSend, msgLen);
 }
 
-boolean GateOpenerCommunicator::send(int senderId, OpenGateMsg msg)
+boolean GateOpenerCommunicator::send(int receiverId, OpenGateMsg msg)
 {
 	int msgLen = msg.createOpenGateMsg(MessageToSend);
-	return sendMessage(senderId, MessageToSend, msgLen);
+	return sendMessage(receiverId, MessageToSend, msgLen);
+}
+
+boolean GateOpenerCommunicator::send(int receiverId, AddressMsg msg)
+{
+	int msgLen = msg.createAddressMsg(MessageToSend);
+	return sendMessage(receiverId, MessageToSend, msgLen);	
 }
 
 TokenMsg::TokenMsg(boolean isValid, long token)
@@ -178,6 +265,23 @@ int CodeMsg::createCodeMsg(byte* buf)
 	return CodeLength+1;
 }
 
+RequestAddressMsg::RequestAddressMsg(long token)
+{
+	Token = token;
+}
+
+int RequestAddressMsg::createRequestAddressMsg(byte* buf)
+{
+	buf[0]=REQUESTADDRESSMSG;
+	Encoding::longToByteArray(Token, buf, 1);
+	return 5;
+}
+
+RequestAddressMsg::RequestAddressMsg(byte* msg, int msgLen)
+{
+	Token = Encoding::byteArrayToLong(msg, 1);
+}
+
 GateNumMsg::GateNumMsg(long token, byte gateId)
 {
 	Token = token;
@@ -214,6 +318,26 @@ OpenGateMsg::OpenGateMsg()
 	
 }
 
+AddressMsg::AddressMsg(long token, byte address)
+{
+	Token = token;
+	Address = address;
+}
+
+AddressMsg::AddressMsg(byte* msg, int msgLen)
+{
+	Token = Encoding::byteArrayToLong(msg, 1);
+	Address = msg[5];
+}
+
+int AddressMsg::AddressMsg(byte* buf)
+{
+	buf[0] = ADDRESSMSG;
+	Encoding::longToByteArray(Token, buf, 1)
+	buf[5] = Address;
+	return 5;
+}
+
 void Logger::init()
 {
 	Serial.begin(9600);
@@ -248,6 +372,24 @@ void Logger::log(TokenMsg msg, byte counterpartId, boolean direction)
 	Serial.print(msg.IsValid);
 	Serial.print(" ");
 	Serial.print(msg.Token);
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
+}
+
+void Logger::log(RequestAddressMsg msg, byte counterpartId, boolean direction)
+{
+	Serial.print("R ");
+	Serial.print(msg.Token);
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
+}
+
+void Logger::log(AddressMsg msg, byte counterpartId, boolean direction)
+{
+	Serial.print("A ");
+	Serial.print(msg.Token);
+	Serial.print(" ");
+	Serial.print(msg.Address);
 	logCounterpartId(counterpartId, direction);
 	Serial.println();
 }
@@ -303,4 +445,74 @@ void Logger::log(OpenGateMsg msg, byte counterpartId, boolean direction)
 	Serial.print("O ");
 	logCounterpartId(counterpartId, direction);
 	Serial.println();
+}
+
+void Random::init(int analogPin, int pwmPin)
+{
+	_pwmPin = pwmPin;
+	_analogPin = analogPin;
+	pinMode(_analogPin, INPUT);
+	pinMode(_pwmPin, OUTPUT);
+	analogReference(EXTERNAL);
+	analogWrite(_pwmPin, 127);
+	_refNum = getNoise();
+	randomSeed(generateLong());
+}
+
+byte Random::getNoise()
+{
+	int val = analogRead(_analogPin) - 510;
+	return val < 0 ? (byte)(-val) : (byte)val;
+}
+
+byte Random::generateByte()
+{
+	byte randomNum = 0;
+	byte pos = 0;
+	
+	while(pos < 8)
+	{
+		byte r = getNoise();
+		for(byte i = 0; i < 4; i++)
+		{
+			byte twoBites = r & 0x03;
+			if(twoBites == 1)
+			{
+				randomNum++;
+				randomNum <<= 1;
+				pos++;
+			}
+			else if(twoBites == 2)
+			{
+				randomNum <<= 1;
+				pos++;
+			}
+			r >>= 2;
+			if(pos == 8)
+			{
+				break;
+			}
+		}
+	}
+	return randomNum;
+}
+
+long Random::generateLong()
+{
+	return ((long)generateByte()) + ((long)generateByte() << 8) + ((long)generateByte() << 16) + ((long)generateByte() << 24);
+}
+
+int Random::generateInt()
+{	
+	return ({int}generateByte()) + ((int)generateByte() << 8);
+}
+
+byte Random::generateByteArd(byte min, byte max)
+{
+	return (byte)random(min, max);
+}
+
+int Random::generateIntArd(int min, int max)
+{
+	return random(min,max);
 }

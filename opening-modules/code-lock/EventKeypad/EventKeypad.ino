@@ -1,14 +1,8 @@
-/* ack nefunguje, co ak neodpoveda, 
-*/
 #include <GateOpenerCommunicator.h>
 #include <Keypad.h>
 
-#define MASTERADDRESS 1
-#define CODELOCKADDRESS 2
-#define NETWORKADDRESS 0
-#define FREQUENCY     RF69_868MHZ
-#define ENCRYPTKEY    "TOPSECRETPASSWRD" 
-#define USEACK        true // Request ACKs or not
+#define MASTERADDRESS 255
+#define CODELOCKADDRESS 0
 
 #define COMMUNICATION 0
 #define CODE 1
@@ -50,15 +44,14 @@ const unsigned long keyTimeoutTime = 3000;
 void setup()
 {
   logger.init();
-  communicator.init(FREQUENCY, CODELOCKADDRESS, NETWORKADDRESS, ENCRYPTKEY);
-  
-  keypad.addEventListener(keypadEvent);
-  resetCodePos();
   pinMode(piezo, OUTPUT);
   pinMode(RLed, OUTPUT);
   pinMode(GLed, OUTPUT);
-  ledOff();
+  communicator.init(SLAVE,CODELOCKADDRESS);
+  keypad.addEventListener(keypadEvent);
+  resetCodePos();  
   state = CODE;
+  ledOff();
 }
 
 void loop()
@@ -220,7 +213,7 @@ void sendCodeToMaster()
   state = COMMUNICATION;
   CodeMsg msg = CodeMsg(readCode, maxCodeLength);
   logger.log(msg, MASTERADDRESS, SEND);
-  boolean ok = communicator.send(MASTERADDRESS, msg);
+  boolean ok = communicator.broadcast(msg);
   logger.logDeliveryStatus(ok);
   resetCodePos();
 }
