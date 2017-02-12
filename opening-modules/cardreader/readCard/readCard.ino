@@ -1,33 +1,30 @@
-#include <RFM69.h>
-#include <SPI.h>
+#include <GateOpenerCommunicator.h>
 #include <MFRC522.h>
 
+GateOpenerCommunicator communicator;
+Logger logger;
+Random rnd;
 
 #define SS_PIN 5
 #define RST_PIN 6
 
-#define MASTERADDRESS 1
-#define CARDREADERADDRESS 5
-#define NETWORKADDRESS 0
-#define FREQUENCY     RF69_868MHZ
-#define ENCRYPTKEY    "TOPSECRETPASSWRD" 
-#define USEACK        true // Request ACKs or not
-
-RFM69 radio;
- 
 MFRC522 rfid(SS_PIN, RST_PIN); 
 MFRC522::MIFARE_Key key; 
 
 const byte cardCodeLength = 4;
 byte readCode[cardCodeLength];
 
+const byte analogPin = A0;
+const byte pwmPin = 9;
+
 void setup() 
 { 
   Serial.begin(9600);
-  radio.initialize(FREQUENCY, CARDREADERADDRESS, NETWORKADDRESS);
-  radio.encrypt(ENCRYPTKEY);
   SPI.begin(); 
   rfid.PCD_Init();
+  rnd.init(analogPin, pwmPin);
+  logger.init();
+  communicator.init(SLAVE, rnd, logger);
   Serial.println("Card reader");
 }
  
@@ -67,7 +64,7 @@ void readCard()
       readCode[i] = rfid.uid.uidByte[i];
     }
     Serial.print(F("Card code in hex: "));
-    printHex(rfid.uid.uidByte, rfid.uid.size);
+    printDec(rfid.uid.uidByte, rfid.uid.size);
     Serial.println();
     rfid.PICC_HaltA();
     rfid.PCD_StopCrypto1();
@@ -76,10 +73,10 @@ void readCard()
       sendCodeToMaster(); 
     }
 }
-/*void printDec(byte *buffer, byte bufferSize) 
+void printDec(byte *buffer, byte bufferSize) 
 {
   for (byte i = 0; i < bufferSize; i++) {
     Serial.print(buffer[i] < 0x10 ? " 0" : " ");
     Serial.print(buffer[i], DEC);
   }
-}*/
+}

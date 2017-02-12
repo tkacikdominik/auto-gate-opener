@@ -1,4 +1,5 @@
 // po dynamickom priradení sieti, nastaviť PWM pin na 0!!!
+/*pin pong spravy, ak master odide, automatický reconect ak master oddíde, identifikacia zámkov na mastrovi*/
 
 #include <GateOpenerCommunicator.h>
 
@@ -26,6 +27,10 @@ long tokens[numTokens];
 unsigned long tokenTime[numTokens]; 
 int actualTokenIndex = 0;
 unsigned long tokenValidTime = 30000;
+
+byte gates[2][16];
+byte gateAddress;
+byte gateId;
 
 byte freeAddress[32];
 
@@ -66,6 +71,11 @@ void processMessage()
     case REQUESTADDRESSMSG:
     {
       requestAddressMsgHandler();
+      break;
+    }
+    case GATEIDMSG:
+    {
+      gateIdMsgHandler();
       break;
     }
     default:
@@ -116,6 +126,14 @@ void requestAddressMsgHandler()
   }
 }
 
+void gateIdMsgHandler()
+{
+  GateIdMsg gateIdMsg = GateIdMsg(communicator.RecvMessage, communicator.MessageLength);
+  logger.log(gateIdMsg,communicator.SenderId,RECV);
+  gateAddress = communicator.SenderId;
+  gateId = gateIdMsg.GateId;
+}
+
 byte getFreeAddress()
 {
   for(byte i =0; i < 255; i++ )
@@ -135,10 +153,13 @@ void gateNumMsgHandler()
 {
   GateNumMsg gateNumMsg = GateNumMsg(communicator.RecvMessage, communicator.MessageLength);
   logger.log(gateNumMsg, communicator.SenderId, RECV);
-  OpenGateMsg openGateMsg = OpenGateMsg();
-  logger.log(openGateMsg, 255, SEND);
-  boolean ok = communicator.send(255, openGateMsg);
-  logger.logDeliveryStatus(ok); 
+  if(gateNumMsg.GateId == gateId)
+  {
+    OpenGateMsg openGateMsg = OpenGateMsg();
+    logger.log(openGateMsg, gateAddress, SEND);
+    boolean ok = communicator.send(gateAddress, openGateMsg);
+    logger.logDeliveryStatus(ok); 
+  }
 }
 
 void verifyCodeMsgHandler()

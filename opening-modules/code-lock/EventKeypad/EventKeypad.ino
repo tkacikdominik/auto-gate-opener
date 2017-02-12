@@ -15,8 +15,8 @@ char keys[rows][cols] =
 {'*','0','#','D'}
 };
 
-byte rowsPin[rows] = {7, 8, A2, A1};
-byte colsPin[cols] = {3, 4, 5, 6};
+byte rowsPin[rows] = {A0, A1, A2, A3};
+byte colsPin[cols] = {A4, 5, 6, 7};
 Keypad keypad = Keypad(makeKeymap(keys), rowsPin, colsPin, rows, cols); 
 
 GateOpenerCommunicator communicator;
@@ -30,11 +30,11 @@ byte pos;
 unsigned long keyTimeout = 0;
 
 // piezo pin 
-byte piezo = A3;
-byte GLed = A4;
-byte RLed = A5;
-const byte analogPin = A0;
-const byte pwmPin = 9;
+byte piezo = 9;
+byte GLed = 8;
+//byte RLed = A5;
+const byte analogPin = A5;
+const byte pwmPin = 3;
 
 byte state;
 long actualToken;
@@ -48,7 +48,7 @@ void setup()
   logger.init();
   communicator.init(SLAVE, rnd, logger);
   pinMode(piezo, OUTPUT);
-  pinMode(RLed, OUTPUT);
+ // pinMode(RLed, OUTPUT);
   pinMode(GLed, OUTPUT);
   keypad.addEventListener(keypadEvent);
   resetCodePos();  
@@ -126,8 +126,8 @@ void keypadEvent(KeypadEvent key)
 }
 
 void processKeyChooseGate(KeypadEvent key)
-{
-  GateNumMsg gateNumMsg = GateNumMsg(actualToken, 1);  
+{  
+  GateNumMsg gateNumMsg = GateNumMsg(actualToken, parseByte(key));  
   logger.log(gateNumMsg, communicator.MasterAddress, SEND);
   
   boolean ok = communicator.send(communicator.MasterAddress, gateNumMsg);
@@ -141,6 +141,23 @@ void processKeyChooseGate(KeypadEvent key)
     invalidPip();
   }
   goToStateCode();  
+}
+
+byte parseByte(KeypadEvent key)
+{
+  if(key=='1')
+  {
+    return 1;
+  }
+  if(key=='2')
+  {
+    return 2;
+  }
+  if(key=='3')
+  {
+    return 3;
+  }
+  return 4;
 }
 
 void processKeyCode(KeypadEvent key)
@@ -266,23 +283,23 @@ void resetCodePos()
 void ledCodeOn()
 {
   digitalWrite(GLed, HIGH);
-  digitalWrite(RLed, LOW);
+  //digitalWrite(RLed, LOW);
 }
 
 void ledGateOn()
 {
   digitalWrite(GLed, LOW);
-  digitalWrite(RLed, HIGH);
+ //digitalWrite(RLed, HIGH);
 }
 
 void ledCommunicationOn()
 {
   digitalWrite(GLed, HIGH);
-  digitalWrite(RLed, HIGH);
+ // digitalWrite(RLed, HIGH);
 }
 
 void ledOff()
 {
   digitalWrite(GLed, LOW);
-  digitalWrite(RLed, LOW);
+ // digitalWrite(RLed, LOW);
 }

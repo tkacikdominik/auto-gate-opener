@@ -18,6 +18,7 @@
 #define OPENGATEMSG 4
 #define REQUESTADDRESSMSG 5
 #define ADDRESSMSG 6 
+#define GATEIDMSG 7
 
 #define NETWORKADDRESS 0
 #define FREQUENCY RF69_868MHZ
@@ -107,6 +108,17 @@ class AddressMsg
 		int createAddressMsg(byte* buf); 
 };
 
+class GateIdMsg
+{
+	public:
+	GateIdMsg(byte gateId);
+	GateNumMsg(byte* msg, int msgLen);
+	
+	byte GateId;
+		
+	int createGateIdMsg(byte* buf);
+};
+
 class Random
 {
 	public:
@@ -128,6 +140,7 @@ class Logger
 	public:
 		void init();
 		void log(GateNumMsg msg, byte counterpartId, boolean direction);
+		void log(GateIdMsg msg, byte counterpartId, boolean direction);
 		void log(CodeMsg msg, byte counterpartId, boolean direction);
 		void log(OpenGateMsg msg, byte counterpartId, boolean direction);
 		void log(TokenMsg msg, byte counterpartId, boolean direction);		
@@ -162,6 +175,7 @@ class GateOpenerCommunicator
 	boolean send(int receiverId, TokenMsg msg);
 	boolean send(int receiverId, CodeMsg msg);
 	boolean send(int receiverId, OpenGateMsg msg);
+	boolean send(int receiverId, GateIdMsg msg);
 	boolean send(int receiverId, GateNumMsg msg);
 	boolean send(int receiverId, AddressMsg msg);
 	boolean broadcast(RequestAddressMsg msg);

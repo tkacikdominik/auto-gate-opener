@@ -198,6 +198,12 @@ boolean GateOpenerCommunicator::send(int receiverId, OpenGateMsg msg)
 	return sendMessage(receiverId, MessageToSend, msgLen);
 }
 
+boolean GateOpenerCommunicator::send(int receiverId, GateIdMsg msg)
+{
+	int msgLen = msg.createGateIdMsg(MessageToSend);
+	return sendMessage(receiverId, MessageToSend, msgLen);
+}
+
 boolean GateOpenerCommunicator::send(int receiverId, AddressMsg msg)
 {
 	int msgLen = msg.createAddressMsg(MessageToSend);
@@ -347,6 +353,23 @@ int AddressMsg::createAddressMsg(byte* buf)
 	return 5;
 }
 
+GateIdMsg::GateIdMsg(byte gateId)
+{
+	GateId = gateId;
+}
+
+GateNumMsg(byte* msg, int msgLen)
+{
+	GateId = msg[1];
+}
+
+int GateIdMsg::createGateIdMsg(byte* buf)
+{
+	buf[0]= GATEIDMSG;
+	buf[1]= GateId;
+	return 2;
+}
+
 void Logger::init()
 {
 	Serial.begin(9600);
@@ -354,12 +377,22 @@ void Logger::init()
 
 void Logger::log(GateNumMsg msg,  byte counterpartId, boolean direction)
 {
-	 Serial.print("G ");
-	 Serial.print(msg.Token);
-	 Serial.print("  ");
-	 Serial.print(msg.GateId);
-	 logCounterpartId(counterpartId, direction);
-	 Serial.println();
+	Serial.print("G ");
+	Serial.print(msg.Token);
+	Serial.print("  ");
+	Serial.print(msg.GateId);
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
+}
+
+void Logger::log(GateIdMsg msg, byte counterpartId, boolean direction)
+{
+	Serial.print("I ");
+	Serial.print(msg.GateId);
+	Serial.print("  ");
+	Serial.print(msg.GateId);
+	logCounterpartId(counterpartId, direction);
+	Serial.println();
 }
 
 void Logger::log(CodeMsg msg, byte counterpartId, boolean direction)
