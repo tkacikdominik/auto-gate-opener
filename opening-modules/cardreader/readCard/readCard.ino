@@ -1,6 +1,10 @@
 #include <GateOpenerCommunicator.h>
 #include <MFRC522.h>
 
+#define COMMUNICATION 0
+#define READCARD 1
+
+
 GateOpenerCommunicator communicator;
 Logger logger;
 Random rnd;
@@ -17,41 +21,24 @@ byte readCode[cardCodeLength];
 const byte analogPin = A0;
 const byte pwmPin = 9;
 
+byte state;
+
 void setup() 
 { 
-  Serial.begin(9600);
   SPI.begin(); 
   rfid.PCD_Init();
   rnd.init(analogPin, pwmPin);
   logger.init();
-  communicator.init(SLAVE, rnd, logger);
-  Serial.println("Card reader");
+  communicator.init(SLAVE, rnd, logger, NULL);
+  state = READCARD;
 }
  
 void loop() 
 {
- readCard();
-}
-
-void printHex(byte *buffer, byte bufferSize) 
-{
-  for (byte i = 0; i < bufferSize; i++) {
-    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-    Serial.print(buffer[i], HEX);
-  }
-}
-
-void sendCodeToMaster()
-{
-  Serial.println("Posielam na mastra");
-  /*if (radio.sendWithRetry(MASTERADDRESS, readCode, cardCodeLength, 2, 2))
+  if(state = READCARD)
   {
-    Serial.println("Prijate!");
+    readCard(); 
   }
-  else
-  {
-    Serial.println("Neprijate");
-  }  */
 }
 
 void readCard()
@@ -70,7 +57,7 @@ void readCard()
     rfid.PCD_StopCrypto1();
     if(readCode[0]!=0)
     {
-      sendCodeToMaster(); 
+      
     }
 }
 void printDec(byte *buffer, byte bufferSize) 
@@ -78,5 +65,13 @@ void printDec(byte *buffer, byte bufferSize)
   for (byte i = 0; i < bufferSize; i++) {
     Serial.print(buffer[i] < 0x10 ? " 0" : " ");
     Serial.print(buffer[i], DEC);
+  }
+}
+
+void printHex(byte *buffer, byte bufferSize) 
+{
+  for (byte i = 0; i < bufferSize; i++) {
+    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+    Serial.print(buffer[i], HEX);
   }
 }

@@ -143,7 +143,6 @@
 <text x="33.44" y="52.17" size="1.27" layer="16" rot="MR0">3V3</text>
 <text x="62.08" y="82.43" size="2.54" layer="16" rot="MR180">868 MHZ</text>
 <text x="50.84" y="79.78" size="2.54" layer="16" rot="MR0">Bluetooth</text>
-<text x="94" y="56" size="2.54" layer="16" rot="MR0">Layer 1</text>
 </plain>
 <libraries>
 <library name="capacitor-wima">
@@ -2895,11 +2894,11 @@ design rules under a new name.</description>
 <wire x1="93.67" y1="67.16" x2="93.67" y2="65.81" width="1.27" layer="16"/>
 </signal>
 <signal name="S$18">
-<wire x1="68.63" y1="68.73" x2="68.63" y2="65.9" width="1.6764" layer="16"/>
-<wire x1="68.63" y1="65.9" x2="78.31" y2="65.91" width="1.6764" layer="16"/>
-<wire x1="78.31" y1="65.91" x2="78.31" y2="69.03" width="1.6764" layer="16"/>
-<wire x1="78.31" y1="69.03" x2="95.68" y2="69.02" width="1.6764" layer="16"/>
-<wire x1="95.68" y1="69.02" x2="95.68" y2="65.77" width="1.6764" layer="16"/>
+<wire x1="68.63" y1="68.73" x2="68.63" y2="65.9" width="1.4224" layer="16"/>
+<wire x1="68.63" y1="65.9" x2="78.31" y2="65.91" width="1.4224" layer="16"/>
+<wire x1="78.31" y1="65.91" x2="78.31" y2="69.03" width="1.4224" layer="16"/>
+<wire x1="78.31" y1="69.03" x2="95.68" y2="69.02" width="1.4224" layer="16"/>
+<wire x1="95.68" y1="69.02" x2="95.68" y2="65.77" width="1.4224" layer="16"/>
 </signal>
 <signal name="S$19">
 <wire x1="73.71" y1="68.7" x2="73.73" y2="71.19" width="1.6764" layer="16"/>

@@ -1,6 +1,3 @@
-// po dynamickom priradení sieti, nastaviť PWM pin na 0!!!
-/*pin pong spravy, ak master odide, automatický reconect ak master oddíde, identifikacia zámkov na mastrovi*/
-
 #include <GateOpenerCommunicator.h>
 
 #define FREEADDRESS 0
@@ -13,7 +10,6 @@ Random rnd;
 const byte led1 = 6;
 const byte led2 = 7;
 const byte led3 = 8;
-
 const byte analogPin = A0;
 const byte pwmPin = 3;
 
@@ -28,6 +24,7 @@ unsigned long tokenTime[numTokens];
 int actualTokenIndex = 0;
 unsigned long tokenValidTime = 30000;
 
+/*****G A T E S*****/ 
 byte gates[2][16];
 byte gateAddress;
 byte gateId;
@@ -38,7 +35,7 @@ void setup()
 {
   logger.init();
   rnd.init(analogPin, pwmPin);
-  communicator.init(MASTER, rnd, logger);
+  communicator.init(MASTER, rnd, logger, NULL);
   setAddressFull(communicator.MyAddress);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
@@ -136,7 +133,22 @@ void gateIdMsgHandler()
 
 byte getFreeAddress()
 {
-  for(byte i =0; i < 255; i++ )
+  for(byte i =0; i < 254; i++ )
+  {
+    boolean isFree = isAddressFree(i);  
+    if(isFree)
+    {
+      setAddressFull(i);
+      return i;
+    }
+  } 
+  //Pamat pre slave je plna, treba ju cistit
+  return 255;
+}
+
+byte getFreeGates()
+{
+  for(byte i = 0; i < 16; i++ )
   {
     boolean isFree = isAddressFree(i);  
     if(isFree)

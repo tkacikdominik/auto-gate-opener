@@ -4,8 +4,9 @@ Logger logger;
 GateOpenerCommunicator communicator;
 Random rnd;
 
-byte gateOutput = 3;
-const byte dip[] = {A0 ,A1 , A2, A3};
+byte gateRelay = 7;
+byte lightRelay = 8;
+const byte dip[] = {A0 ,A1 , A2, A3, A4};
 const byte analogPin = A5;
 const byte pwmPin = 9;
 byte myDipAddress;
@@ -14,8 +15,9 @@ byte myDipAddress;
 
 void setup() 
 {
-  pinMode(3, OUTPUT);
-  for(byte i = 0;i < 4;i++)
+  pinMode(gateRelay, OUTPUT);
+  pinMode(lightRelay, OUTPUT);
+  for(byte i = 0;i < 5;i++)
   {
     pinMode(dip[i], INPUT);
     digitalWrite(dip[i], HIGH);
@@ -23,7 +25,11 @@ void setup()
   myDipAddress = getDipAddress();
   rnd.init(analogPin, pwmPin);
   logger.init();
-  communicator.init(SLAVE, rnd, logger);
+  communicator.init(SLAVE, rnd, logger, afterConnect); 
+}
+
+void afterConnect()
+{
   GateIdMsg gateIdMsg = GateIdMsg(myDipAddress);
   logger.log(gateIdMsg, communicator.MasterAddress, SEND);
   communicator.send(communicator.MasterAddress, gateIdMsg);
@@ -31,11 +37,11 @@ void setup()
 
 void loop() 
 {
+  communicator.refresh();
   if (communicator.receive())
   {
     processMessage();
-  }
-  
+  }  
 }
 
 void processMessage()
@@ -64,9 +70,21 @@ void openGateMsgHandler()
 
 void openGate()
 {
-  digitalWrite(gateOutput, HIGH);
-  delay(2000);
-  digitalWrite(gateOutput, LOW); 
+    if(getLightstatus())
+  {
+    digitalWrite(lightRelay, HIGH);
+    digitalWrite(gateRelay, HIGH);
+    delay(2000);
+    digitalWrite(gateRelay, LOW); 
+    delay(8000);
+    digitalWrite(lightRelay, LOW);   
+  }
+  else 
+  {
+    digitalWrite(gateRelay, HIGH);
+    delay(2000);
+    digitalWrite(gateRelay, LOW); 
+  }
 }
 
 void unknownMsgHandler()
@@ -84,3 +102,17 @@ byte getDipAddress()
   }
   return dipAddress; 
 }
+
+boolean getLightstatus()
+{
+  byte val = digitalRead(dip[4]);
+  if(val==1)
+  {
+    return true;
+  }
+  else 
+  {
+    return false;
+  }
+}
+

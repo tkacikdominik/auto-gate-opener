@@ -1,36 +1,33 @@
-#include <SPI.h>
-#include <RFM69.h>
+#include <GateOpenerCommunicator.h>
 
-#define MASTERADDRESS 1
-#define BLUETOOTHADDRESS 4
-#define NETWORKADDRESS 0
+#define COMMUNICATION 0
+#define CODE 1
+#define CHOOSEGATE 2
 
-// RFM69 frequency, uncomment the frequency of your module:
+GateOpenerCommunicator communicator;
+Logger logger;
+Random rnd;
 
-#define FREQUENCY     RF69_868MHZ
-#define ENCRYPTKEY    "TOPSECRETPASSWRD" // Use the same 16-byte key on all nodes
-
-// Use ACKnowledge when sending messages (or not):
-
-#define USEACK        true // Request ACKs or not
+const byte analogPin = A5;
+const byte pwmPin = 3;
 
 const char submitChar ='\n';
 
-// Create a library object for our RFM69HCW module:
-RFM69 radio;
-/*****************C O D E*******************/
           /***C O N S T A T S***/
 const byte maxCodeLength = 8;
           /***V A R I A B L E***/
 char readCode[maxCodeLength];
 byte pos;
 
+byte state;
+
 void setup() 
 {  
-  Serial.begin(9600);
+  rnd.init(analogPin, pwmPin);
+  logger.init();
+  communicator.init(SLAVE, rnd, logger, NULL);
   resetCodePos();
-  radio.initialize(FREQUENCY, BLUETOOTHADDRESS, NETWORKADDRESS);
-  radio.encrypt(ENCRYPTKEY);
+  state = CODE;
 }
 
 void loop() 
@@ -45,7 +42,7 @@ void loop()
   {
     if(charRead==submitChar)
     {
-      sendCodeToMaster();
+      //sendCodeToMaster();
       Serial.println("posielam na mastra");
     }
     else
@@ -62,8 +59,6 @@ void loop()
     }
   }
 }
-
-/******M E T H O T S*********/
 
 void resetCode()
 {
@@ -82,18 +77,4 @@ void resetCodePos()
 {
   resetCode();
   resetPos();
-}
-
-void sendCodeToMaster()
-{  
-  Serial.println(readCode);
-  if (radio.sendWithRetry(MASTERADDRESS, readCode, maxCodeLength, 100, 100))
-  {
-    
-  }
-  else
-  {
-    
-  }  
-  resetCodePos();
 }
